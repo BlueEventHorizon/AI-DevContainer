@@ -1,3 +1,6 @@
+> [!NOTE]
+> このドキュメントは、Google の Gemini によって作成されました。
+
 # VS Code DevContainer for Gemini CLI
 
 このプロジェクトは、[Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli) を [VS Code DevContainers](https://code.visualstudio.com/docs/devcontainers/containers) 上で利用するためのサンプル環境です。
@@ -28,12 +31,27 @@
     ```
 
 2.  **Docker Desktop の代替 (macOS ユーザー向け)**
-    Docker Desktop が利用できない、または利用したくない場合に、[Colima](https://github.com/abiosoft/colima) を利用して代替環境を構築するためのヘルパーコマンドが `Makefile` に用意されています。
+    Docker Desktop が利用できない、または利用したくない場合に、[Colima](https://github.com/abiosoft/colima) を利用して代替環境を構築できます。
+
+    **初回セットアップ:**
+    以下のコマンドは、必要なツール（Docker, Colima）のインストールと Colima の起動を一度に行います。初めて環境を構築する際に一度だけ実行してください。
 
     ```bash
     make setup-docker
     ```
-    このコマンドは、`brew` を使って Docker クライアントと Colima がインストールされているかを確認し、なければインストールを試み、Colima を起動します。
+
+    **2回目以降の起動と停止:**
+    セットアップが完了している場合、開発作業の開始時に以下のコマンドで Colima を起動します。
+
+    ```bash
+    colima start
+    ```
+
+    作業が終了したら、以下のコマンドで Colima を停止してください。
+
+    ```bash
+    colima stop
+    ```
 
 3.  **DevContainer で開く**
     VS Code でこのプロジェクトフォルダを開くと、右下に「Reopen in Container」という通知が表示されます。これをクリックしてください。
