@@ -4,5 +4,12 @@
    "dockerfile": "./Dockerfile",
    "context": ".."
  },
- "remoteUser": "node"
+ "remoteUser": "node",
+ "customizations": {
+  "vscode": {
+   "extensions": [
+    "google.gemini-code-assist"
+   ]
+  }
+ }
 }
