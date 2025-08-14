@@ -1,0 +1,8 @@
+{
+ "name": "sample-dev-container",
+ "build": {
+   "dockerfile": "./Dockerfile",
+   "context": ".."
+ },
+ "remoteUser": "node"
+}
