@@ -1,14 +1,16 @@
 {
- "name": "sample-dev-container",
+ "name": "ai-dev-container",
  "build": {
    "dockerfile": "./Dockerfile",
    "context": ".."
  },
  "remoteUser": "node",
+ "postCreateCommand": "npm install",
  "customizations": {
   "vscode": {
    "extensions": [
-    "google.gemini-code-assist"
+    "google.gemini-code-assist",
+    "Anthropic.claude-code"
    ]
   }
  }

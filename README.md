@@ -1,16 +1,14 @@
-> [!NOTE]
-> このドキュメントは、Google の Gemini によって作成されました。
+# VS Code DevContainer for Node.js with AI Assistants
 
-# VS Code DevContainer for Gemini CLI
-
-このプロジェクトは、[Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli) を [VS Code DevContainers](https://code.visualstudio.com/docs/devcontainers/containers) 上で利用するためのサンプル環境です。
+このプロジェクトは、[VS Code DevContainers](https://code.visualstudio.com/docs/devcontainers/containers) を使った汎用的な Node.js 開発環境のサンプルです。
 コンテナ技術を利用することで、ローカル環境を汚さずに、誰でも同じ開発環境を素早く構築できます。
 
 ## 主な特徴
 
-- **環境構築済み:** Gemini CLI がプリインストールされた Node.js 環境が定義されています。
+- **汎用的な Node.js 環境:** Alpine Linux ベースの軽量な Node.js 24 環境
+- **AI コーディング支援:** Gemini CLI と Claude Code が利用可能
 - **一貫性:** DevContainer を使うことで、OS の違い（macOS, Windows, Linux）を問わず、統一された環境で開発できます。
-- **拡張機能の推奨:** Gemini を利用する上で便利な VS Code 拡張機能（`google.gemini-code-assist`）が推奨されます。
+- **拡張機能の推奨:** AI コーディング支援ツール（`google.gemini-code-assist`, `Anthropic.claude-code`）が推奨されます。
 
 ## セットアップ方法
 
@@ -63,8 +61,13 @@
 
 ## 使い方
 
-コンテナ環境の準備ができたら、VS Code 内で新しいターミナルを開きます。
-以下のコマンドで Gemini CLI が利用できます。
+### AI コーディング支援ツール
+
+コンテナ環境の準備ができたら、以下のツールが利用できます:
+
+#### Gemini CLI
+
+VS Code 内で新しいターミナルを開き、以下のコマンドで利用できます。
 
 ```bash
 # gemini コマンドの存在確認
@@ -77,12 +80,27 @@ gemini --help
 npm run gemini -- --help
 ```
 
+#### Claude Code
+
+VS Code 内で新しいターミナルを開き、以下のコマンドで利用できます。
+
+```bash
+# claude コマンドの存在確認
+claude --help
+```
+
+`package.json` に定義された npm script を経由して実行することも可能です。
+
+```bash
+npm run claude -- --help
+```
+
 ## ファイル構成
 
 - **`.devcontainer/`**: DevContainer の設定ファイルが含まれています。
   - `devcontainer.json`: ポート、拡張機能、ビルド方法などを定義します。
-  - `Dockerfile`: コンテナのベースイメージと、インストールするソフトウェア（`@google/gemini-cli`）を定義します。
-- **`package.json`**: プロジェクトの依存関係（`@google/gemini-cli`）と npm スクリプトを定義します。
+  - `Dockerfile`: コンテナのベースイメージと、インストールするソフトウェアを定義します。
+- **`package.json`**: プロジェクトの依存関係と npm スクリプトを定義します。
 - **`Makefile`**: (macOS ユーザー向け) Docker Desktop の代替として Colima をセットアップするためのヘルパーコマンドが定義されています。
 - **`.vscode/`**: VS Code エディタに固有の設定が含まれています。
   - `extensions.json`: このプロジェクトで推奨される VS Code 拡張機能を定義します。
