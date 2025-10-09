@@ -1,12 +1,12 @@
-# VS Code DevContainer for Node.js with AI Assistants
+# VS Code DevContainer with AI Assistants
 
-このプロジェクトは、[VS Code DevContainers](https://code.visualstudio.com/docs/devcontainers/containers) を使った汎用的な Node.js 開発環境のサンプルです。
+このプロジェクトは、[VS Code DevContainers](https://code.visualstudio.com/docs/devcontainers/containers) を使った AI 支援開発環境のサンプルです。
 コンテナ技術を利用することで、ローカル環境を汚さずに、誰でも同じ開発環境を素早く構築できます。
 
 ## 主な特徴
 
-- **汎用的な Node.js 環境:** Alpine Linux ベースの軽量な Node.js 24 環境
 - **AI コーディング支援:** Gemini CLI と Claude Code が利用可能
+- **軽量な環境:** Alpine Linux ベースの Node.js 24 環境
 - **一貫性:** DevContainer を使うことで、OS の違い（macOS, Windows, Linux）を問わず、統一された環境で開発できます。
 - **拡張機能の推奨:** AI コーディング支援ツール（`google.gemini-code-assist`, `Anthropic.claude-code`）が推奨されます。
 
