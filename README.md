@@ -5,7 +5,7 @@
 
 ## 主な特徴
 
-- **AI コーディング支援:** Gemini CLI と Claude Code が利用可能
+- **AI コーディング支援:** Gemini CLI、Claude Code、OpenAI Codex が利用可能
 - **軽量な環境:** Alpine Linux ベースの Node.js 24 環境
 - **一貫性:** DevContainer を使うことで、OS の違い（macOS, Windows, Linux）を問わず、統一された環境で開発できます。
 - **拡張機能の推奨:** AI コーディング支援ツール（`google.gemini-code-assist`, `Anthropic.claude-code`）が推奨されます。
@@ -95,12 +95,76 @@ claude --help
 npm run claude -- --help
 ```
 
+#### OpenAI Codex
+
+VS Code 内で新しいターミナルを開き、以下のコマンドで利用できます。
+
+```bash
+# codex コマンドの存在確認
+codex --help
+```
+
+`package.json` に定義された npm script を経由して実行することも可能です。
+
+```bash
+npm run codex -- --help
+```
+
+## 既存プロジェクトへのインストール
+
+この AI DevContainer 環境を既存のプロジェクトに追加できます。
+
+### 自動インストール（推奨）
+
+インストールスクリプトを使用して自動的にセットアップできます：
+
+```bash
+# 基本的な使い方
+./install-devcontainer.sh /path/to/your/project
+
+# 既存ファイルをバックアップしながらインストール
+./install-devcontainer.sh --backup /path/to/your/project
+```
+
+スクリプトは以下の処理を自動で行います：
+
+1. `.devcontainer/` ディレクトリのコピー
+2. `package.json` の自動マージ（既存の場合は devDependencies と scripts を追加）
+3. `.gitignore` の確認と更新（`node_modules/` の追加）
+4. `Makefile` のコピー（オプション、macOS ユーザー向け）
+
+### 手動インストール
+
+手動でインストールする場合は、以下のファイルをコピーしてください：
+
+1. **必須**: `.devcontainer/` ディレクトリ全体
+2. **必須**: `package.json` に以下を追加（既存ファイルがある場合はマージ）
+   ```json
+   {
+     "devDependencies": {
+       "@anthropic-ai/claude-code": "latest",
+       "@google/gemini-cli": "latest",
+       "@openai/codex": "latest"
+     },
+     "scripts": {
+       "gemini": "gemini",
+       "claude": "claude",
+       "codex": "codex"
+     }
+   }
+   ```
+3. **推奨**: `.gitignore` に `node_modules/` を追加
+4. **オプション**: `Makefile`（macOS で Docker Desktop を使わない場合）
+
+インストール後、VS Code でプロジェクトを開き、「Dev Containers: Reopen in Container」を実行してください。
+
 ## ファイル構成
 
 - **`.devcontainer/`**: DevContainer の設定ファイルが含まれています。
   - `devcontainer.json`: ポート、拡張機能、ビルド方法などを定義します。
   - `Dockerfile`: コンテナのベースイメージと、インストールするソフトウェアを定義します。
 - **`package.json`**: プロジェクトの依存関係と npm スクリプトを定義します。
+- **`install-devcontainer.sh`**: 既存プロジェクトへの自動インストールスクリプト
 - **`Makefile`**: (macOS ユーザー向け) Docker Desktop の代替として Colima をセットアップするためのヘルパーコマンドが定義されています。
 - **`.vscode/`**: VS Code エディタに固有の設定が含まれています。
   - `extensions.json`: このプロジェクトで推奨される VS Code 拡張機能を定義します。
