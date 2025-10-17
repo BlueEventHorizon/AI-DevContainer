@@ -87,7 +87,7 @@ echo "ターゲット: $TARGET_DIR"
 echo ""
 
 # .devcontainer のコピー
-echo "[1/4] .devcontainer ディレクトリをコピー中..."
+echo "[1/5] .devcontainer ディレクトリをコピー中..."
 if [ -d "$TARGET_DIR/.devcontainer" ]; then
     warning ".devcontainer ディレクトリが既に存在します"
     if $BACKUP; then
@@ -103,9 +103,32 @@ fi
 cp -r "$SCRIPT_DIR/.devcontainer" "$TARGET_DIR/"
 success ".devcontainer をコピーしました"
 
+# scripts のコピー
+echo ""
+echo "[2/5] scripts ディレクトリをコピー中..."
+if [ -d "$TARGET_DIR/scripts" ]; then
+    warning "scripts ディレクトリが既に存在します"
+    if $BACKUP; then
+        BACKUP_NAME="scripts.backup.$(date +%Y%m%d_%H%M%S)"
+        mv "$TARGET_DIR/scripts" "$TARGET_DIR/$BACKUP_NAME"
+        success "既存ディレクトリを $BACKUP_NAME にバックアップしました"
+        cp -r "$SCRIPT_DIR/scripts" "$TARGET_DIR/"
+        success "scripts をコピーしました"
+    elif confirm "上書きしますか？"; then
+        rm -rf "$TARGET_DIR/scripts"
+        cp -r "$SCRIPT_DIR/scripts" "$TARGET_DIR/"
+        success "scripts をコピーしました"
+    else
+        warning "scripts のコピーをスキップしました"
+    fi
+else
+    cp -r "$SCRIPT_DIR/scripts" "$TARGET_DIR/"
+    success "scripts をコピーしました"
+fi
+
 # package.json の処理
 echo ""
-echo "[2/4] package.json を処理中..."
+echo "[3/5] package.json を処理中..."
 if [ -f "$TARGET_DIR/package.json" ]; then
     warning "package.json が既に存在します"
 
@@ -159,7 +182,7 @@ fi
 
 # .gitignore の処理
 echo ""
-echo "[3/4] .gitignore を確認中..."
+echo "[4/5] .gitignore を確認中..."
 if [ -f "$TARGET_DIR/.gitignore" ]; then
     if ! grep -q "node_modules/" "$TARGET_DIR/.gitignore"; then
         echo "node_modules/" >> "$TARGET_DIR/.gitignore"
@@ -174,7 +197,7 @@ fi
 
 # Makefile のコピー（オプション）
 echo ""
-echo "[4/4] Makefile を確認中..."
+echo "[5/5] Makefile を確認中..."
 if [ -f "$SCRIPT_DIR/Makefile" ]; then
     if confirm "Makefile をコピーしますか？（macOS ユーザーで Docker Desktop を使わない場合に有用）"; then
         if [ -f "$TARGET_DIR/Makefile" ] && $BACKUP; then
