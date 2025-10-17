@@ -141,7 +141,25 @@ colima stop
 
 VS Code を使わず、直接コンテナを起動して使うこともできます。
 
-**方法1: DevContainer イメージを使用（推奨）**
+**方法0: 起動スクリプトを使用（最も簡単）**
+
+便利な起動スクリプトを用意しています：
+
+```bash
+# DevContainer を起動（イメージがなければ自動ビルド）
+./start-container.sh
+
+# シンプルな Node.js コンテナを起動
+./start-container.sh --node
+
+# DevContainer を再ビルドして起動
+./start-container.sh --rebuild
+
+# ヘルプを表示
+./start-container.sh --help
+```
+
+**方法1: DevContainer イメージを使用**
 
 ```bash
 # コンテナイメージをビルド
@@ -149,14 +167,32 @@ docker build -t ai-devcontainer -f .devcontainer/Dockerfile .
 
 # コンテナを起動してシェルに入る
 docker run -it --rm \
-  -v $(pwd):/workspace \
+  -v "$(pwd)":/workspace \
   -w /workspace \
   ai-devcontainer sh
+```
 
-# コンテナ内で AI ツールを実行
+コンテナに入ると、プロンプトが `/workspace #` のように変わります。
+
+**コンテナ内にいることを確認:**
+
+```bash
+# Alpine Linux であることを確認
+cat /etc/os-release
+
+# Node.js 24 がインストールされていることを確認
+node --version
+
+# AI ツールが使えることを確認
 gemini --help
 claude --help
 codex --help
+```
+
+**コンテナから抜ける:**
+
+```bash
+exit
 ```
 
 **方法2: シンプルな Node.js コンテナを使用**
@@ -164,17 +200,29 @@ codex --help
 ```bash
 # Node.js コンテナを起動
 docker run -it --rm \
-  -v $(pwd):/workspace \
+  -v "$(pwd)":/workspace \
   -w /workspace \
   node:24-alpine sh
+```
 
-# コンテナ内で依存関係をインストール
+コンテナに入ると、プロンプトが `/workspace #` のように変わります。
+
+**コンテナ内での作業:**
+
+```bash
+# 依存関係をインストール
 npm install
 
 # AI ツールを実行
 npx gemini --help
 npx claude --help
 npx codex --help
+```
+
+**コンテナから抜ける:**
+
+```bash
+exit
 ```
 
 ### 利用可能な AI ツール
@@ -256,6 +304,7 @@ npm run codex -- --help   # npm script 経由
   - `devcontainer.json`: ポート、拡張機能、ビルド方法などを定義
   - `Dockerfile`: コンテナのベースイメージとインストールするソフトウェアを定義
 - **`package.json`**: プロジェクトの依存関係と npm スクリプトを定義
+- **`start-container.sh`**: コンソールからコンテナを起動するスクリプト
 - **`install-devcontainer.sh`**: 既存プロジェクトへの自動インストールスクリプト
 - **`Makefile`**: (macOS ユーザー向け) Docker Desktop の代替として Colima をセットアップ
 - **`.vscode/`**: VS Code エディタ固有の設定
