@@ -17,3 +17,6 @@ RUN echo 'export PATH="./node_modules/.bin:$PATH"' >> ~/.profile && \
 
 # package.json を node ユーザー所有でコピー
 COPY --chown=node:node package*.json ./
+
+# 依存関係をインストール
+RUN npm install
