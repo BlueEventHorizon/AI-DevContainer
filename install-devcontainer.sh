@@ -172,9 +172,34 @@ else
     success ".gitignore を作成しました"
 fi
 
+# start-container.sh のコピー
+echo ""
+echo "[4/5] start-container.sh をコピー中..."
+if [ -f "$SCRIPT_DIR/start-container.sh" ]; then
+    if [ -f "$TARGET_DIR/start-container.sh" ]; then
+        warning "start-container.sh が既に存在します"
+        if $BACKUP; then
+            cp "$TARGET_DIR/start-container.sh" "$TARGET_DIR/start-container.sh.backup.$(date +%Y%m%d_%H%M%S)"
+            success "既存の start-container.sh をバックアップしました"
+        elif ! confirm "上書きしますか？"; then
+            warning "start-container.sh のコピーをスキップしました"
+        else
+            cp "$SCRIPT_DIR/start-container.sh" "$TARGET_DIR/"
+            chmod +x "$TARGET_DIR/start-container.sh"
+            success "start-container.sh をコピーしました"
+        fi
+    else
+        cp "$SCRIPT_DIR/start-container.sh" "$TARGET_DIR/"
+        chmod +x "$TARGET_DIR/start-container.sh"
+        success "start-container.sh をコピーしました"
+    fi
+else
+    warning "start-container.sh が見つかりません"
+fi
+
 # Makefile のコピー（オプション）
 echo ""
-echo "[4/4] Makefile を確認中..."
+echo "[5/5] Makefile を確認中..."
 if [ -f "$SCRIPT_DIR/Makefile" ]; then
     if confirm "Makefile をコピーしますか？（macOS ユーザーで Docker Desktop を使わない場合に有用）"; then
         if [ -f "$TARGET_DIR/Makefile" ] && $BACKUP; then

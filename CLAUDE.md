@@ -16,7 +16,7 @@ The project uses a minimal Alpine Linux-based Node.js container:
 - **Pre-installed Tools**: npm packages defined in `package.json` (including `@google/gemini-cli`, `@anthropic-ai/claude-code`, `@openai/codex`)
 - **VS Code Extensions**: `google.gemini-code-assist` and `Anthropic.claude-code`
 
-The DevContainer setup installs dependencies during container build time by copying `package.json` and running `npm install` before the workspace is mounted.
+The DevContainer setup installs dependencies at container startup time. When using VS Code DevContainers, the `postCreateCommand` in `devcontainer.json` runs `npm install`. When using `start-container.sh`, it automatically runs `npm install` before presenting the shell.
 
 ## Common Commands
 
@@ -83,4 +83,4 @@ To rebuild the container after changing `.devcontainer/Dockerfile` or `package.j
 
 When adding new npm packages:
 1. Update `package.json`
-2. Rebuild the DevContainer (the packages are installed during container build, not at runtime)
+2. Restart the container or run `npm install` manually (packages are installed at container startup, not during build)

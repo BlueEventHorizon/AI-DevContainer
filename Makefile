@@ -38,12 +38,8 @@ install: detect-platform check-docker check-colima check-buildx
 			exit 1; \
 		fi; \
 	fi
-	@printf "$(YELLOW)You can launch up DevContainer with VS Code$(RESET)\n"
-	@if command -v code &>/dev/null; then \
-		code .; \
-	else \
-		printf "$(YELLOW)'code' command not found. Please open VS Code manually.$(RESET)\n"; \
-	fi
+	@printf "$(YELLOW)✅ Setup complete!$(RESET)\n"
+	@printf "$(YELLOW)Next: See 'Usage' section in README.md$(RESET)\n"
 
 # Docker がインストールされているかチェック
 check-docker:

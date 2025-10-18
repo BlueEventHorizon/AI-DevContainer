@@ -141,40 +141,92 @@ colima stop
 
 VS Code を使わず、直接コンテナを起動して使うこともできます。
 
-**方法1: DevContainer イメージを使用（推奨）**
+**方法0: 起動スクリプトを使用（最も簡単）**
+
+便利な起動スクリプトを用意しています：
+
+```bash
+# DevContainer を起動（イメージがなければ自動ビルド）
+./start-container.sh
+
+# シンプルな Node.js コンテナを起動
+./start-container.sh --node
+
+# DevContainer を再ビルドして起動
+./start-container.sh --rebuild
+
+# ヘルプを表示
+./start-container.sh --help
+```
+
+**方法1: DevContainer イメージを使用**
 
 ```bash
 # コンテナイメージをビルド
 docker build -t ai-devcontainer -f .devcontainer/Dockerfile .
 
-# コンテナを起動してシェルに入る
+# コンテナを起動してシェルに入る（依存関係を自動インストール）
 docker run -it --rm \
-  -v $(pwd):/workspace \
+  -v "$(pwd)":/workspace \
   -w /workspace \
-  ai-devcontainer sh
+  ai-devcontainer sh -c "npm install --silent 2>/dev/null || true; exec sh -l"
+```
 
-# コンテナ内で AI ツールを実行
+コンテナに入ると、プロンプトが `/workspace #` のように変わります。
+
+**コンテナ内にいることを確認:**
+
+```bash
+# Alpine Linux であることを確認
+cat /etc/os-release
+
+# Node.js 24 がインストールされていることを確認
+node --version
+
+# AI ツールが使えることを確認
 gemini --help
 claude --help
 codex --help
 ```
 
+**コンテナから抜ける:**
+
+```bash
+exit
+```
+
 **方法2: シンプルな Node.js コンテナを使用**
 
 ```bash
-# Node.js コンテナを起動
+# Node.js コンテナを起動（依存関係を自動インストール）
 docker run -it --rm \
-  -v $(pwd):/workspace \
+  -v "$(pwd)":/workspace \
   -w /workspace \
-  node:24-alpine sh
+  node:24-alpine sh -c "npm install --silent 2>/dev/null || true; exec sh -l"
+```
 
-# コンテナ内で依存関係をインストール
-npm install
+コンテナに入ると、プロンプトが `/workspace #` のように変わります。
 
-# AI ツールを実行
+**コンテナ内での作業:**
+
+依存関係は起動時に自動的にインストールされるので、すぐにAIツールが使えます：
+
+```bash
+# AI ツールを直接実行（エイリアスが有効）
+gemini --help
+claude --help
+codex --help
+
+# または npx 経由でも実行可能
 npx gemini --help
 npx claude --help
 npx codex --help
+```
+
+**コンテナから抜ける:**
+
+```bash
+exit
 ```
 
 ### 利用可能な AI ツール
@@ -223,7 +275,8 @@ npm run codex -- --help   # npm script 経由
 1. `.devcontainer/` ディレクトリのコピー
 2. `package.json` の自動マージ（既存の場合は devDependencies と scripts を追加）
 3. `.gitignore` の確認と更新（`node_modules/` の追加）
-4. `Makefile` のコピー（オプション、macOS ユーザー向け）
+4. `start-container.sh` のコピー（コンソールからの起動用）
+5. `Makefile` のコピー（オプション、macOS ユーザー向け）
 
 ### 手動インストール
 
@@ -246,7 +299,8 @@ npm run codex -- --help   # npm script 経由
    }
    ```
 3. **推奨**: `.gitignore` に `node_modules/` を追加
-4. **オプション**: `Makefile`（macOS で Docker Desktop を使わない場合）
+4. **推奨**: `start-container.sh`（コンソールからコンテナを起動する場合）
+5. **オプション**: `Makefile`（macOS で Docker Desktop を使わない場合）
 
 インストール後、VS Code でプロジェクトを開き、「Dev Containers: Reopen in Container」を実行してください。
 
@@ -256,6 +310,7 @@ npm run codex -- --help   # npm script 経由
   - `devcontainer.json`: ポート、拡張機能、ビルド方法などを定義
   - `Dockerfile`: コンテナのベースイメージとインストールするソフトウェアを定義
 - **`package.json`**: プロジェクトの依存関係と npm スクリプトを定義
+- **`start-container.sh`**: コンソールからコンテナを起動するスクリプト
 - **`install-devcontainer.sh`**: 既存プロジェクトへの自動インストールスクリプト
 - **`Makefile`**: (macOS ユーザー向け) Docker Desktop の代替として Colima をセットアップ
 - **`.vscode/`**: VS Code エディタ固有の設定
