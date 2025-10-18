@@ -14,6 +14,3 @@ RUN echo 'export PATH="./node_modules/.bin:$PATH"' >> ~/.profile && \
     echo 'alias claude="npx claude"' >> ~/.profile && \
     echo 'alias gemini="npx gemini"' >> ~/.profile && \
     echo 'alias codex="npx codex"' >> ~/.profile
-
-# package.json を node ユーザー所有でコピー
-COPY --chown=node:node package*.json ./
