@@ -271,7 +271,8 @@ npm run codex -- --help   # npm script 経由
 1. `.devcontainer/` ディレクトリのコピー
 2. `package.json` の自動マージ（既存の場合は devDependencies と scripts を追加）
 3. `.gitignore` の確認と更新（`node_modules/` の追加）
-4. `Makefile` のコピー（オプション、macOS ユーザー向け）
+4. `start-container.sh` のコピー（コンソールからの起動用）
+5. `Makefile` のコピー（オプション、macOS ユーザー向け）
 
 ### 手動インストール
 
@@ -294,7 +295,8 @@ npm run codex -- --help   # npm script 経由
    }
    ```
 3. **推奨**: `.gitignore` に `node_modules/` を追加
-4. **オプション**: `Makefile`（macOS で Docker Desktop を使わない場合）
+4. **推奨**: `start-container.sh`（コンソールからコンテナを起動する場合）
+5. **オプション**: `Makefile`（macOS で Docker Desktop を使わない場合）
 
 インストール後、VS Code でプロジェクトを開き、「Dev Containers: Reopen in Container」を実行してください。
 
