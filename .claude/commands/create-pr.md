@@ -4,8 +4,8 @@
 
 ## 前提条件
 
-- **docs/info/github_info.md**: GitHub情報（オーナー、リポジトリ、レビューア）
 - **gh CLI**: インストール・認証済み
+- `.github/PULL_REQUEST_TEMPLATE.md`が存在すればこれを用いる
 
 ## 使用方法
 
@@ -25,13 +25,12 @@ create-pr [ベースブランチ]
 
 2. **PR情報準備**
    - コミット履歴・変更ファイル取得（`git log`, `git diff`）
-   - github_info.mdからオーナー・リポジトリ・レビューア取得
+   - gitリポジトリのオーナー・リポジトリ
    - ブランチ名からPRタイトル生成（feature/xxx → "[Feature] XXX"）
 
 3. **PR作成**
    - リモートプッシュ（未プッシュの場合）
    - `gh pr create`でPR作成
-   - github_info.mdのレビューア自動適用
 
 4. **完了処理**
    - PR URL表示
@@ -39,6 +38,4 @@ create-pr [ベースブランチ]
 
 ## 重要事項
 
-- **PRテンプレート**: `.github/PULL_REQUEST_TEMPLATE.md`が存在すれば自動適用
-- **レビューア**: `docs/info/github_info.md`の設定を優先使用
 - **オプション**: `--draft`, `--reviewer`, `--label`等は`gh pr create --help`参照
