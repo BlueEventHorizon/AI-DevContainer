@@ -2,7 +2,7 @@
 
 ## 概要
 
-`setup-sandbox.sh --vscode` でターゲットの git プロジェクトに `.devcontainer/` を配置し、VS Code の DevContainers 拡張機能と連携してコンテナ環境を起動する。コンテナ内で Claude Code と OpenAI Codex が即時利用可能な状態となる。
+`launch-sandbox.sh --vscode` でターゲットの git プロジェクトに `.devcontainer/` を配置し、VS Code の DevContainers 拡張機能と連携してコンテナ環境を起動する。コンテナ内で Claude Code と OpenAI Codex が即時利用可能な状態となる。
 
 **優先度**: 2（FNC-002 / FNC-003 の次に実装）
 
@@ -16,7 +16,7 @@
 
 ### `.devcontainer/` 配置要件
 
-- `setup-sandbox.sh --vscode <ターゲットパス>` でターゲットプロジェクトに `.devcontainer/` を配置する
+- `launch-sandbox.sh --vscode <ターゲットパス>` でターゲットプロジェクトに `.devcontainer/` を配置する
 - 配置されるファイル: `Dockerfile`、`devcontainer.json`
 - ターゲットに既に `.devcontainer/` が存在する場合は確認を求める
 
@@ -66,4 +66,4 @@
 | 日付 | 変更者 | 内容 |
 | --- | --- | --- |
 | 2026-03-21 | AI | 既存ソースコードから初版作成 |
-| 2026-03-29 | AI | 全面書き換え: Ubuntu ベース、`setup-sandbox.sh --vscode` 方式、Claude Code コンテナ内復帰 |
+| 2026-03-29 | AI | 全面書き換え: Ubuntu ベース、`launch-sandbox.sh --vscode` 方式、Claude Code コンテナ内復帰 |

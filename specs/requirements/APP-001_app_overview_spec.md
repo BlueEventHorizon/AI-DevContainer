@@ -145,12 +145,13 @@ AI コーディングアシスタントは開発生産性を大幅に向上さ�
 
 | 目的 | 成功基準 |
 | --- | --- |
-| ターミナルで Claude Code が動作 | `./setup-sandbox.sh <プロジェクトパス>` でコンテナを起動し、`claude --help` が終了コード 0 で完了し、git プロジェクトに対して対話的にコーディング支援が受けられること |
+| ターミナルで Claude Code が動作 | `./launch-sandbox.sh <プロジェクトパス>` でコンテナを起動し、`claude --help` が終了コード 0 で完了し、git プロジェクトに対して対話的にコーディング支援が受けられること |
 | ターミナルで Codex が動作 | 同コンテナ内で `codex --help` が終了コード 0 で完了すること |
-| VS Code DevContainer として動作 | `setup-sandbox.sh --vscode` でターゲットに `.devcontainer/` を配置後、VS Code の「Reopen in Container」でコンテナに接続でき、統合ターミナルから `claude` と `codex` が実行できること |
+| AI への権限委譲 | コンテナ内のインタラクティブシェルで `claude` に `--dangerously-skip-permissions`、`codex` に `--dangerously-bypass-approvals-and-sandbox` が自動付与されること |
+| VS Code DevContainer として動作 | `launch-sandbox.sh --vscode` でターゲットに `.devcontainer/` を配置後、VS Code の「Reopen in Container」でコンテナに接続でき、統合ターミナルから `claude` と `codex` が実行できること |
 | セキュリティ | コンテナ内からホストのファイルシステムにアクセスできないこと。検証: コンテナ内で `ls /home/` にホストユーザーのディレクトリが存在しないこと、`mount` の出力に `/workspace` 以外のホストパスがマウントされていないこと |
 | 環境の再現性 | 同一の Dockerfile からビルドしたイメージで `claude --help` と `codex --help` がそれぞれ終了コード 0 で完了すること（ツールのバージョンはビルド時点の最新に依存する） |
-| macOS セットアップ自動化 | `make install` 実行のみで Docker 環境が利用可能になること |
+| macOS セットアップ自動化 | 初回は `make setup` で Docker 環境を構築し、利用開始時は `make start` で Colima を起動できること |
 
 ## スコープ
 
@@ -158,7 +159,7 @@ AI コーディングアシスタントは開発生産性を大幅に向上さ�
 
 - **git 管理された開発プロジェクト**を対象としたコンテナ化 AI 開発環境
 - AI コーディングアシスタント（Claude Code、OpenAI Codex）のネイティブバイナリとしてのプリインストール
-- AI Sandbox リポジトリからターゲットプロジェクトを指定してコンテナを起動する仕組み（`setup-sandbox.sh`、最優先）
+- AI Sandbox リポジトリからターゲットプロジェクトを指定してコンテナを起動する仕組み（`launch-sandbox.sh`、最優先）
 - VS Code DevContainer としての動作（ターゲットに `.devcontainer/` を配置する方式）
 - macOS 向け Docker 環境（Colima）の自動セットアップ
 
@@ -183,7 +184,7 @@ AI コーディングアシスタントは開発生産性を大幅に向上さ�
 
 | OS | Docker 環境 | セットアップ方法 |
 | --- | --- | --- |
-| macOS（Intel / Apple Silicon） | Colima | `make install` で自動セットアップ（FNC-004） |
+| macOS（Intel / Apple Silicon） | Colima | `make setup` で自動セットアップ、`make start` で起動（FNC-004） |
 | Linux（x86_64 / arm64） | Docker Engine | Docker Engine の手動インストール |
 
 ### 必須ソフトウェアバージョン
@@ -227,7 +228,7 @@ Docker イメージはサイズが大きい（Ubuntu ベース + AI ツールで
 ├── ~/tools/AI-Sandbox/                 ← AI Sandbox リポジトリ（クローン先は任意）
 │     ├── .devcontainer/
 │     │     └── Dockerfile              ← イメージの定義（ソース）
-│     └── setup-sandbox.sh             ← 起動スクリプト
+│     └── launch-sandbox.sh             ← 起動スクリプト
 │
 ├── ~/projects/my-app/                  ← ターゲットの git プロジェクト（複数可）
 ├── ~/projects/other-project/           ← 別のターゲットプロジェクト
@@ -242,7 +243,7 @@ Docker イメージはサイズが大きい（Ubuntu ベース + AI ツールで
 - Dockerfile は AI Sandbox リポジトリに **1つだけ**。ターゲットプロジェクトにはコピーされない（方式 A の場合）
 - ビルド済みイメージは Docker のストレージに保持され、全プロジェクトで共有される
 - macOS（Colima）の場合、イメージの実体は `~/.colima/_lima/` 配下の VM ディスク内にある
-- `setup-sandbox.sh` を実行するたびに同じイメージから独立したコンテナが生成される。複数プロジェクトの同時実行が可能
+- `launch-sandbox.sh` を実行するたびに同じイメージから独立したコンテナが生成される。複数プロジェクトの同時実行が可能
 
 ### 利用形態
 
@@ -261,8 +262,8 @@ flowchart LR
         Codex["codex\n（OpenAI Codex）"]
     end
 
-    Sandbox -- "方式 A: setup-sandbox.sh パス指定" --> Container
-    Sandbox -- "方式 B: setup-sandbox.sh --vscode" --> Target
+    Sandbox -- "方式 A: launch-sandbox.sh パス指定" --> Container
+    Sandbox -- "方式 B: launch-sandbox.sh --vscode" --> Target
     Target -- "docker run -v マウント" --> Workspace
     Target -- "VS Code: Reopen in Container" --> Container
     Workspace --> Claude
@@ -271,20 +272,32 @@ flowchart LR
 
 **方式 A: ターミナル起動（最優先）**
 
-AI Sandbox リポジトリの `setup-sandbox.sh` に対象プロジェクトのパスを指定してコンテナを起動する。ターゲットプロジェクトへのファイルコピーは不要。
+AI Sandbox リポジトリの `launch-sandbox.sh` に対象プロジェクトのパスを指定してコンテナを起動する。ターゲットプロジェクトへのファイルコピーは不要。
 
 ```bash
 # AI Sandbox リポジトリから実行
-./setup-sandbox.sh ~/projects/my-app
+./launch-sandbox.sh ~/projects/my-app
+
+# AI Sandbox リポジトリ直下から Make 経由で実行
+make launch-sandbox ~/projects/my-app
+
+# Claude Code / Codex だけを共有イメージ内で更新
+make update-tools
+
+# Dockerfile 全体の変更を共有イメージに反映
+make update-all
+
+# ターゲットプロジェクト側から実行
+~/tools/AI-Sandbox/launch-sandbox.sh .
 ```
 
 **方式 B: VS Code DevContainer**
 
-同じ `setup-sandbox.sh` に `--vscode` オプションを付けて実行すると、ターゲットプロジェクトに `.devcontainer/` を配置する。その後 VS Code の「Reopen in Container」で起動する。
+同じ `launch-sandbox.sh` に `--vscode` オプションを付けて実行すると、ターゲットプロジェクトに `.devcontainer/` を配置する。その後 VS Code の「Reopen in Container」で起動する。
 
 ```bash
 # AI Sandbox リポジトリから実行
-./setup-sandbox.sh --vscode ~/projects/my-app
+./launch-sandbox.sh --vscode ~/projects/my-app
 ```
 
 ## 実装と検証の順序
@@ -294,13 +307,13 @@ AI Sandbox リポジトリの `setup-sandbox.sh` に対象プロジェクトの�
 ### Phase 1: ターミナルでの Claude Code 動作（最優先）
 
 1. Ubuntu ベースの Dockerfile を作成し、Claude Code と Codex をネイティブインストール
-2. `setup-sandbox.sh` を作成し、対象プロジェクトのパスを引数で受け取りコンテナを起動する
+2. `launch-sandbox.sh` を作成し、対象プロジェクトのパスを引数で受け取りコンテナを起動する
 3. 対象プロジェクトがコンテナ内 `/workspace` にマウントされ、`claude` コマンドで AI コーディング支援が受けられることを確認
 4. ファイルシステム分離（ホストの `/workspace` 以外にアクセスできないこと）を確認
 
 ### Phase 2: VS Code DevContainer 動作
 
-1. devcontainer.json を作成し、`setup-sandbox.sh --vscode` でターゲットプロジェクトに配置
+1. devcontainer.json を作成し、`launch-sandbox.sh --vscode` でターゲットプロジェクトに配置
 2. VS Code の「Reopen in Container」で接続できることを確認
 3. 統合ターミナルから `claude` と `codex` が実行できることを確認
 
@@ -312,8 +325,8 @@ AI Sandbox リポジトリの `setup-sandbox.sh` に対象プロジェクトの�
 
 | 項目 | 操作 | 備考 |
 | --- | --- | --- |
-| Docker 環境 | macOS: `make install`（Colima + Docker CLI + Buildx を自動セットアップ）<br>Linux: Docker Engine を手動インストール | 初回のみ。詳細は FNC-004 および [MAKEFILE_GUIDE.md](MAKEFILE_GUIDE.md) を参照 |
-| Docker 起動 | macOS: `colima start`<br>Linux: `sudo systemctl start docker` | 毎回の作業開始時 |
+| Docker 環境 | macOS: `make setup`（Colima + Docker CLI + Buildx を自動セットアップ）<br>Linux: Docker Engine を手動インストール | 初回のみ。詳細は FNC-004 および [MAKEFILE_GUIDE.md](MAKEFILE_GUIDE.md) を参照 |
+| Docker 起動 | macOS: `make start`<br>Linux: `sudo systemctl start docker` | 毎回の作業開始時 |
 | AI Sandbox リポジトリ | `git clone ... ~/tools/AI-Sandbox` | 初回のみ。クローン先は任意 |
 
 ### シナリオ 1: ターミナルで git プロジェクトに対して Claude Code を使う（最重要）
@@ -321,7 +334,7 @@ AI Sandbox リポジトリの `setup-sandbox.sh` に対象プロジェクトの�
 | 手順 | 操作 | 備考 |
 | --- | --- | --- |
 | 1 | AI Sandbox リポジトリのディレクトリに移動 | `cd ~/tools/AI-Sandbox`（クローン先は任意） |
-| 2 | `./setup-sandbox.sh ~/projects/my-app` を実行 | 1）対象の git プロジェクトのパスを引数で指定する <br>2）初回はイメージのビルドが行われる<br>3）完了するとそのままコンテナ内のシェルに切り替わり、プロンプトが `/workspace $` に変わる |
+| 2 | `./launch-sandbox.sh ~/projects/my-app` または `make launch-sandbox ~/projects/my-app` を実行 | 1）対象の git プロジェクトのパスを引数で指定する <br>2）初回はイメージのビルドが行われる<br>3）完了するとそのままコンテナ内のシェルに切り替わり、プロンプトが `/workspace $` に変わる |
 | 3 | `claude` を実行 | `/workspace` に対象プロジェクトの全ファイルが見える。AI コーディング支援を受ける |
 | 4 | `exit` でコンテナを終了 | AI が行った変更はホスト側の git プロジェクトに反映されている |
 
@@ -332,7 +345,7 @@ AI Sandbox リポジトリの `setup-sandbox.sh` に対象プロジェクトの�
 
 | 手順 | 操作 | 備考 |
 | --- | --- | --- |
-| 1 | `./setup-sandbox.sh --vscode ~/projects/my-app` を実行 | AI Sandbox リポジトリから実行。ターゲットプロジェクトに `.devcontainer/` が配置される |
+| 1 | `./launch-sandbox.sh --vscode ~/projects/my-app` を実行 | AI Sandbox リポジトリから実行。ターゲットプロジェクトに `.devcontainer/` が配置される |
 | 2 | VS Code でターゲットプロジェクトを開く | `code ~/projects/my-app` |
 | 3 | 「Reopen in Container」を実行 | コンテナが起動し、VS Code が接続される |
 | 4 | 統合ターミナルで `claude` や `codex` を実行 | または Claude Code VS Code 拡張を使用 |
@@ -342,16 +355,16 @@ AI Sandbox リポジトリの `setup-sandbox.sh` に対象プロジェクトの�
 
 | シナリオ | 主要手順 | 対応する機能要件 |
 | --- | --- | --- |
-| 前提条件: Docker 環境構築 | `make install`（macOS）/ Docker Engine インストール（Linux） | FNC-004 |
-| シナリオ 1: ターミナルで Claude Code | `./setup-sandbox.sh <パス>` → `claude` | FNC-002, FNC-003 |
-| シナリオ 2: VS Code DevContainer | `./setup-sandbox.sh --vscode <パス>` → 「Reopen in Container」 | FNC-001, FNC-002, FNC-003 |
+| 前提条件: Docker 環境構築 | `make setup` → `make start`（macOS）/ Docker Engine インストール（Linux） | FNC-004 |
+| シナリオ 1: ターミナルで Claude Code | `./launch-sandbox.sh <パス>` → `claude` | FNC-002, FNC-003 |
+| シナリオ 2: VS Code DevContainer | `./launch-sandbox.sh --vscode <パス>` → 「Reopen in Container」 | FNC-001, FNC-002, FNC-003 |
 
 ## 主要機能一覧
 
 | ID | 機能名 | 概要 | 優先度 |
 | --- | --- | --- | --- |
-| FNC-001 | DevContainer 環境構築（VS Code 連携） | `setup-sandbox.sh --vscode` でターゲットに `.devcontainer/` を配置し、VS Code DevContainer として起動する | 2 |
-| FNC-002 | コンテナ起動（ターミナル） | `setup-sandbox.sh` でターゲットプロジェクトを指定してコンテナを起動し、シェルから AI ツールを実行する | 1（最優先） |
+| FNC-001 | DevContainer 環境構築（VS Code 連携） | `launch-sandbox.sh --vscode` でターゲットに `.devcontainer/` を配置し、VS Code DevContainer として起動する | 2 |
+| FNC-002 | コンテナ起動（ターミナル） | `launch-sandbox.sh` でターゲットプロジェクトを指定してコンテナを起動し、シェルから AI ツールを実行する | 1（最優先） |
 | FNC-003 | AI コーディングアシスタント実行 | コンテナ内で Claude Code と OpenAI Codex をネイティブバイナリとして実行する | 1（最優先） |
 | FNC-004 | macOS Docker 環境セットアップ | Colima を使った Docker 環境の自動セットアップ | 3 |
 

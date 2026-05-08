@@ -37,14 +37,18 @@ USER devuser
 # PATH を設定（全シェル種別に適用）
 ENV PATH="/home/devuser/.local/bin:$PATH"
 
+# AI ツール更新時だけこの値を変えて、OS/apt レイヤーを再利用したまま以降を再実行する
+ARG AI_TOOLS_CACHE_BUST=0
+RUN echo "AI_TOOLS_CACHE_BUST=${AI_TOOLS_CACHE_BUST}" > /tmp/ai-tools-cache-bust
+
 # Claude Code を公式インストーラーでインストール
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# OpenAI Codex を GitHub Releases から glibc バイナリとしてインストール
+# OpenAI Codex を GitHub Releases から Linux バイナリとしてインストール
 RUN ARCH=$(dpkg --print-architecture) && \
     case "${ARCH}" in \
-      amd64) CODEX_ARCH="x86_64-unknown-linux-gnu" ;; \
-      arm64) CODEX_ARCH="aarch64-unknown-linux-gnu" ;; \
+      amd64) CODEX_ARCH="x86_64-unknown-linux-musl" ;; \
+      arm64) CODEX_ARCH="aarch64-unknown-linux-musl" ;; \
       *) echo "Unsupported architecture: ${ARCH}" >&2 && exit 1 ;; \
     esac && \
     mkdir -p "$HOME/.local/bin" && \
@@ -55,11 +59,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
     chmod +x "$HOME/.local/bin/codex" && \
     rm /tmp/codex.tar.gz
 
-# claude コマンドに --dangerously-skip-permissions を自動付与
+# claude/codex コマンドに確認・サンドボックス回避フラグを自動付与
 # コンテナ隔離により Mac ルートは保護されているため、AI への権限委譲が安全に行える
 # alias は .bashrc（インタラクティブシェル用）、警告は .profile（ログインシェルで確実に表示）に記載
 RUN echo 'alias claude="claude --dangerously-skip-permissions"' >> /home/devuser/.bashrc && \
-    echo 'echo -e "\033[1;31m⚠️  AI Sandbox: claude は --dangerously-skip-permissions モードで動作します。AI への権限が大幅に委譲されています。\033[0m"' >> /home/devuser/.profile
+    echo 'alias codex="codex --dangerously-bypass-approvals-and-sandbox"' >> /home/devuser/.bashrc && \
+    echo 'echo -e "\033[1;31m⚠️  AI Sandbox: claude は --dangerously-skip-permissions、codex は --dangerously-bypass-approvals-and-sandbox モードで動作します。AI への権限が大幅に委譲されています。\033[0m"' >> /home/devuser/.profile
 
 # コンテナ用 minimal safety settings.json
 # コンテナ外（リモートリポジトリ）に影響する操作のみ禁止

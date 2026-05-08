@@ -8,7 +8,7 @@
 
 ## 前提条件
 
-- `setup-sandbox.sh` または VS Code DevContainer でコンテナが起動していること
+- `launch-sandbox.sh` または VS Code DevContainer でコンテナが起動していること
 - 各 AI コーディングアシスタントの API キーまたは認証が設定されていること（ツールごとに異なる）
 
 ## 要件一覧
@@ -28,6 +28,9 @@
 - 両ツールのコマンドに PATH が通っていること（追加設定なしで実行可能）
 - ターミナルから対話的に利用できること（`claude` で対話セッション開始）
 - `/workspace` にマウントされたターゲットプロジェクトのコードに対して操作できること
+- コンテナ内のインタラクティブシェルでは、AI ツールに以下の権限委譲フラグが自動付与されること:
+  - `claude`: `--dangerously-skip-permissions`
+  - `codex`: `--dangerously-bypass-approvals-and-sandbox`
 
 ### セキュリティ要件
 
@@ -39,7 +42,8 @@
 ### バージョン管理要件
 
 - 全ツールはコンテナイメージのビルド時にインストールされる
-- ツールの更新はコンテナイメージの再ビルドで行う（`setup-sandbox.sh --rebuild`）
+- Claude Code / Codex だけの更新は `make update-tools` で行う
+- Dockerfile 全体の変更や OS パッケージ更新はコンテナイメージ全体の更新で行う（`launch-sandbox.sh --rebuild` または `make update-all`）
 
 ### エラーケース
 
@@ -70,3 +74,4 @@
 | 2026-03-21 | AI | 既存ソースコードから初版作成 |
 | 2026-03-29 | AI | 全面書き換え: Ubuntu ベース、Claude Code コンテナ内復帰、セキュリティ要件強化 |
 | 2026-03-30 | AI | TBD-001 解決: `CLAUDE_CONFIG_DIR` と `--hostname` による認証永続化要件を追記 |
+| 2026-05-08 | AI | Codex に `--dangerously-bypass-approvals-and-sandbox` の自動付与要件を追加 |

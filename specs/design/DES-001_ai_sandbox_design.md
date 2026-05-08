@@ -10,12 +10,12 @@
 
 ## 1. 概要
 
-AI コーディングアシスタント（Claude Code、OpenAI Codex）をネイティブバイナリとしてプリインストールした Ubuntu 24.04 ベースの Docker コンテナを設計する。`setup-sandbox.sh` スクリプトを唯一のエントリポイントとし、ターミナル起動（方式 A）と VS Code DevContainer 配置（方式 B）の両方に対応する。
+AI コーディングアシスタント（Claude Code、OpenAI Codex）をネイティブバイナリとしてプリインストールした Ubuntu 24.04 ベースの Docker コンテナを設計する。`launch-sandbox.sh` スクリプトを唯一のエントリポイントとし、ターミナル起動（方式 A）と VS Code DevContainer 配置（方式 B）の両方に対応する。
 
 **設計判断の要点:**
 - ベースイメージに Ubuntu 24.04 を採用（glibc 環境。Claude Code のネイティブバイナリが動作する）
 - npm / Node.js を使用しない（Anthropic 公式 DevContainer Feature との差別化）
-- `setup-sandbox.sh` が唯一のエントリポイント（ターミナル起動と VS Code 配置を統合）
+- `launch-sandbox.sh` が唯一のエントリポイント（ターミナル起動と VS Code 配置を統合）
 - Trail of Bits の `claude-code-devcontainer` を参考にしつつ、汎用的な開発用途に最適化
 
 ## 2. アーキテクチャ概要
@@ -25,7 +25,7 @@ AI コーディングアシスタント（Claude Code、OpenAI Codex）をネイ
 ```mermaid
 flowchart TB
     subgraph Host["ホスト（macOS / Linux）"]
-        SetupSh["setup-sandbox.sh"]
+        LaunchSh["launch-sandbox.sh"]
         Makefile["Makefile\n(macOS Docker セットアップ)"]
         Target["ターゲット git プロジェクト"]
     end
@@ -44,8 +44,8 @@ flowchart TB
         Image["ai-sandbox:latest\n(Docker イメージ)"]
     end
 
-    SetupSh -->|"方式 A: docker run"| Container
-    SetupSh -->|"方式 B: --vscode\n.devcontainer/ コピー"| Target
+    LaunchSh -->|"方式 A: docker run"| Container
+    LaunchSh -->|"方式 B: --vscode\n.devcontainer/ コピー"| Target
     Target -->|"bind mount"| Workspace
     Makefile -->|"brew install"| Colima
     Colima --> DockerEngine
@@ -61,7 +61,7 @@ flowchart TB
 | レイヤー | 責務 | 対応ファイル |
 | --- | --- | --- |
 | コンテナイメージ | AI ツールのプリインストール、実行環境の構築 | `.devcontainer/Dockerfile` |
-| エントリポイント | コンテナ起動 / VS Code 配置の統合インターフェース | `setup-sandbox.sh` |
+| エントリポイント | コンテナ起動 / VS Code 配置の統合インターフェース | `launch-sandbox.sh` |
 | DevContainer 設定 | VS Code 連携、拡張機能推奨 | `.devcontainer/devcontainer.json` |
 | Docker 環境構築 | macOS 向け Docker/Colima セットアップ | `Makefile`（既存、変更なし） |
 
@@ -72,7 +72,7 @@ flowchart TB
 | モジュール | 責務 | 入力 | 出力 | 依存 |
 | --- | --- | --- | --- | --- |
 | Dockerfile | コンテナイメージのビルド定義 | Ubuntu ベースイメージ、Claude/Codex インストーラー | Docker イメージ | Docker Hub, claude.ai, GitHub Releases |
-| setup-sandbox.sh | ターミナル起動 / VS Code 配置の統合エントリポイント | ターゲットプロジェクトパス、オプション | 起動済みコンテナ / 配置済み .devcontainer/ | Docker CLI, Dockerfile |
+| launch-sandbox.sh | ターミナル起動 / VS Code 配置の統合エントリポイント | ターゲットプロジェクトパス、オプション | 起動済みコンテナ / 配置済み .devcontainer/ | Docker CLI, Dockerfile |
 | devcontainer.json | VS Code DevContainer 構成 | Dockerfile | VS Code 内のコンテナ接続 | Dockerfile |
 | Makefile | macOS Docker 環境セットアップ | Homebrew | Docker CLI, Colima, Buildx | Homebrew |
 
@@ -96,7 +96,7 @@ flowchart TB
 | ベースイメージ | `ubuntu:24.04` | glibc 環境。Claude Code のネイティブバイナリが動作する。LTS で 2029年4月までサポート | Alpine Linux（musl 非互換で Claude Code 起動不可） |
 | ユーザー名 | `devuser` | 非 root ユーザーでセキュリティ確保。コンテナ固有の名前 | `root`（セキュリティリスク）、`ubuntu`（デフォルトユーザーとの混同回避） |
 | Claude Code インストール | `curl \| bash`（公式インストーラー） | 公式サポートされた唯一のネイティブインストール方法 | npm パッケージ（Node.js 依存を導入するため却下。公式 Feature と差別化不能） |
-| Codex インストール | GitHub Releases から glibc バイナリを直接取得 | npm 不要。Ubuntu では glibc バイナリが動作する | musl バイナリ（Alpine 用。Ubuntu では glibc が標準） |
+| Codex インストール | GitHub Releases から Linux バイナリを直接取得 | npm 不要。Ubuntu でも Linux 向けバイナリが動作する | npm パッケージ（Node.js 依存を導入するため却下） |
 | Codex アーキテクチャ | ビルド時に `dpkg --print-architecture` で検出し、`amd64` / `arm64` に対応するバイナリを選択 | Ubuntu では `dpkg --print-architecture` が最も信頼性が高い | `uname -m`（Ubuntu でも動作するが `dpkg` がより標準的） |
 | PATH 設定 | `ENV PATH="/home/devuser/.local/bin:$PATH"` | Dockerfile の `ENV` は全シェル種別に適用される | `~/.profile` のみ（非ログインシェルで PATH が通らない問題あり） |
 
@@ -118,7 +118,7 @@ Docker のデフォルト設定でコンテナからインターネットへの�
 | Claude Code | `curl \| bash` で実行時点の最新版 | 公式インストーラーがバージョン指定に非対応 |
 | Codex | GitHub Releases の `latest` | 開発用途のため常に最新版を使用。バージョン固定が必要な場合は Dockerfile で `ARG CODEX_VERSION` を導入して対応する |
 
-いずれもビルドタイミングによって異なるバージョンがインストールされる。要件定義書（APP-001）の成功基準は「ツールの存在確認（`--help` が成功すること）」であり、バージョン一致は求めない。
+いずれもビルドタイミングによって異なるバージョンがインストールされる。`make update-tools` は Dockerfile の `AI_TOOLS_CACHE_BUST` build arg を変えて、OS/apt レイヤーを再利用しつつ Claude Code / Codex の取得レイヤー以降だけを再実行する。要件定義書（APP-001）の成功基準は「ツールの存在確認（`--help` が成功すること）」であり、バージョン一致は求めない。
 
 **ビルドエラーハンドリング:**
 
@@ -131,14 +131,15 @@ Dockerfile 内の `curl | bash` や `curl | tar` が失敗した場合、`set -e
 3. 非 root ユーザー `devuser` を作成し、`/workspace` ディレクトリの所有権を付与
 4. `devuser` に切り替え
 5. Claude Code を公式インストーラーでインストール（`~/.local/bin/claude` に配置される）
-6. OpenAI Codex を GitHub Releases から glibc バイナリとしてダウンロードし、`~/.local/bin/codex` に配置
+6. OpenAI Codex を GitHub Releases から Linux バイナリとしてダウンロードし、`~/.local/bin/codex` に配置
 7. `ENV PATH` で `~/.local/bin` を PATH に追加
+8. `.bashrc` に `claude` / `codex` の権限委譲フラグ付き alias を追加し、`.profile` に警告表示を追加
 
 **Colima メモリ要件:**
 
 Claude Code インストーラーが Docker ビルド時にメモリを消費し、実行時も Claude Code プロセスが大量のメモリを使用するため、macOS（Colima）では **8GiB 以上のメモリ割り当て**が必要（`colima start --memory 8`）。4GiB ではビルドは成功するが実行時に OOM Kill される場合がある。
 
-### 3.3 setup-sandbox.sh 設計
+### 3.3 launch-sandbox.sh 設計
 
 **設計判断: 方式 A と方式 B を1つのスクリプトに統合する理由**
 
@@ -152,24 +153,24 @@ Claude Code インストーラーが Docker ビルド時にメモリを消費し
 
 **Dockerfile パス解決:**
 
-`setup-sandbox.sh` は自身のスクリプトが存在するディレクトリを基準に Dockerfile を検索する:
+`launch-sandbox.sh` は自身のスクリプトが存在するディレクトリを基準に Dockerfile を検索する:
 
 ```bash
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKERFILE_PATH="${SCRIPT_DIR}/.devcontainer/Dockerfile"
 ```
 
-これにより、ユーザーがどのディレクトリから実行しても正しく Dockerfile を参照できる。
+これにより、ユーザーがどのディレクトリから実行しても正しく Dockerfile を参照できる。ターゲットプロジェクト側から `/path/to/AI-Sandbox/launch-sandbox.sh .` のように呼び出す運用も可能である。
 
 **シェル言語:** `#!/bin/bash`（bash 固有機能を使用するため。macOS / Linux ともに bash は標準で利用可能）
 
 **コマンド構文:**
 
 ```
-setup-sandbox.sh [OPTIONS] <target-project-path>
-setup-sandbox.sh --vscode <target-project-path>
-setup-sandbox.sh --rebuild <target-project-path>
-setup-sandbox.sh -h | --help
+launch-sandbox.sh [OPTIONS] <target-project-path>
+launch-sandbox.sh --vscode <target-project-path>
+launch-sandbox.sh --rebuild <target-project-path>
+launch-sandbox.sh -h | --help
 ```
 
 **オプション:**
@@ -178,7 +179,7 @@ setup-sandbox.sh -h | --help
 | --- | --- |
 | （なし） | ターゲットプロジェクトをマウントしてコンテナを起動し、シェルに入る |
 | `--vscode` | ターゲットプロジェクトに `.devcontainer/` を配置する（コンテナは起動しない） |
-| `--rebuild` | イメージを強制再ビルドしてからコンテナを起動する |
+| `--rebuild` | イメージをキャッシュなしで強制再ビルドしてからコンテナを起動する |
 | `-h`, `--help` | 使い方を表示する |
 
 **処理フロー（方式 A: ターミナル起動）:**
@@ -186,10 +187,10 @@ setup-sandbox.sh -h | --help
 ```mermaid
 sequenceDiagram
     actor User
-    participant Script as setup-sandbox.sh
+    participant Script as launch-sandbox.sh
     participant Docker as Docker CLI
 
-    User->>Script: ./setup-sandbox.sh ~/projects/my-app
+    User->>Script: ./launch-sandbox.sh ~/projects/my-app
     Script->>Script: 引数バリデーション（パス存在、git リポジトリ確認）
     Script->>Script: Docker インストール・起動確認
     Script->>Script: Dockerfile 存在確認
@@ -212,10 +213,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor User
-    participant Script as setup-sandbox.sh
+    participant Script as launch-sandbox.sh
     participant Target as ターゲットプロジェクト
 
-    User->>Script: ./setup-sandbox.sh --vscode ~/projects/my-app
+    User->>Script: ./launch-sandbox.sh --vscode ~/projects/my-app
     Script->>Script: 引数バリデーション
 
     alt .devcontainer/ が既に存在
@@ -326,27 +327,31 @@ PROJECT_NAME="$(basename "${TARGET_PATH}")-$(echo -n "${TARGET_PATH}" | shasum -
 
 ### 3.5 Makefile 設計
 
-既存の Makefile に **Colima 起動時のメモリ割り当てを 8GiB に変更**する修正を加える。
+Makefile は **初回セットアップ** と **日常の Colima 起動** を別ターゲットとして提供する。Colima 起動時のメモリ割り当ては 8GiB とする。
 
 | ターゲット | 処理 | 変更点 |
 | --- | --- | --- |
-| `install` | Docker CLI + Colima + Buildx をインストールし Colima を起動 | `colima start` → `colima start --memory 8` に変更 |
+| `setup` | Docker CLI + Colima + Buildx をインストール | `install` からセットアップ処理のみを分離 |
+| `start` | Colima を起動 | `colima start --memory 8` を実行 |
+| `launch-sandbox` | 位置引数または `TARGET` で指定したプロジェクトを `launch-sandbox.sh` に渡して起動 | AI Sandbox リポジトリ直下からの利便性向上 |
+| `update-tools` | 共有 Docker イメージ `ai-sandbox` の Claude Code / Codex 取得レイヤーだけを再実行 | AI ツール更新時の待ち時間短縮 |
+| `update-all` | 共有 Docker イメージ `ai-sandbox` を `docker build --no-cache` で全更新 | Dockerfile 全体の変更反映の利便性向上 |
 | `uninstall` | 全コンポーネントをアンインストール | 変更なし |
-| `help` | 利用可能なターゲットを表示 | 変更なし |
+| `help` | 利用可能なターゲットを表示 | `setup` / `start` / `launch-sandbox` / `update-tools` / `update-all` を表示 |
 
-**設計判断:** Claude Code はビルド時・実行時ともに大量のメモリを消費するため、Colima のデフォルトメモリ（2GiB）ではビルドが失敗し、4GiB でも実行時に OOM Kill される場合がある。`make install` で自動的に 8GiB を確保することで安定動作を保証する。
+**設計判断:** Claude Code はビルド時・実行時ともに大量のメモリを消費するため、Colima のデフォルトメモリ（2GiB）ではビルドが失敗し、4GiB でも実行時に OOM Kill される場合がある。`make start` で自動的に 8GiB を確保することで安定動作を保証する。
 
 ### 3.6 モジュール間共有定数
 
-以下の値が Dockerfile・setup-sandbox.sh・devcontainer.json で暗黙的に共有される。変更する場合は全ファイルを同時に更新する必要がある。
+以下の値が Dockerfile・launch-sandbox.sh・devcontainer.json で暗黙的に共有される。変更する場合は全ファイルを同時に更新する必要がある。
 
 | 定数 | 値 | 使用箇所 |
 | --- | --- | --- |
 | ユーザー名 | `devuser` | Dockerfile（`adduser`）、devcontainer.json（`remoteUser`） |
-| イメージ名 | `ai-sandbox` | setup-sandbox.sh（`docker build -t`、`docker run`） |
-| ワークスペースパス | `/workspace` | Dockerfile（`mkdir`）、setup-sandbox.sh（`-v ...:/workspace`）、devcontainer.json |
-| Claude Code 設定パス | `/home/devuser/.claude` | setup-sandbox.sh（Named Volume マウント先）、devcontainer.json（`mounts`） |
-| Volume 名プレフィックス | `ai-sandbox-claude-` | setup-sandbox.sh、devcontainer.json |
+| イメージ名 | `ai-sandbox` | launch-sandbox.sh（`docker build -t`、`docker run`） |
+| ワークスペースパス | `/workspace` | Dockerfile（`mkdir`）、launch-sandbox.sh（`-v ...:/workspace`）、devcontainer.json |
+| Claude Code 設定パス | `/home/devuser/.claude` | launch-sandbox.sh（Named Volume マウント先）、devcontainer.json（`mounts`） |
+| Volume 名プレフィックス | `ai-sandbox-claude-` | launch-sandbox.sh、devcontainer.json |
 
 ## 4. ユースケース設計
 
@@ -354,10 +359,10 @@ PROJECT_NAME="$(basename "${TARGET_PATH}")-$(echo -n "${TARGET_PATH}" | shasum -
 
 | ユースケース | 関連要件 | 説明 |
 | --- | --- | --- |
-| UC-1: ターミナルで AI ツール実行 | FNC-002, FNC-003 | `setup-sandbox.sh` でコンテナ起動し、claude/codex を実行 |
-| UC-2: VS Code DevContainer 起動 | FNC-001 | `setup-sandbox.sh --vscode` で配置後、VS Code で接続 |
-| UC-3: macOS Docker セットアップ | FNC-004 | `make install` で Docker 環境を構築 |
-| UC-4: イメージの更新 | FNC-002 | `setup-sandbox.sh --rebuild` で最新ツールに更新 |
+| UC-1: ターミナルで AI ツール実行 | FNC-002, FNC-003 | `launch-sandbox.sh` でコンテナ起動し、claude/codex を実行 |
+| UC-2: VS Code DevContainer 起動 | FNC-001 | `launch-sandbox.sh --vscode` で配置後、VS Code で接続 |
+| UC-3: macOS Docker セットアップ | FNC-004 | `make setup` で Docker 環境を構築し、`make start` で起動 |
+| UC-4: イメージの更新 | FNC-002 | `make update-tools` で最新ツールに更新し、Dockerfile 全体の変更時は `launch-sandbox.sh --rebuild` または `make update-all` で全更新 |
 | UC-5: 複数プロジェクト同時利用 | FNC-002 | 別ターミナルで別プロジェクトを同時起動 |
 
 ### 4.2 UC-5: 複数プロジェクト同時利用（シーケンス図）
@@ -368,9 +373,9 @@ sequenceDiagram
     actor UserB as ユーザー（ターミナル 2）
     participant Docker as Docker
 
-    UserA->>Docker: ./setup-sandbox.sh ~/projects/app-A
+    UserA->>Docker: ./launch-sandbox.sh ~/projects/app-A
     Docker-->>UserA: コンテナ A（/workspace = app-A）
-    UserB->>Docker: ./setup-sandbox.sh ~/projects/app-B
+    UserB->>Docker: ./launch-sandbox.sh ~/projects/app-B
     Docker-->>UserB: コンテナ B（/workspace = app-B）
 
     Note over UserA,UserB: 同一イメージから独立したコンテナ<br>Volume も別（ai-sandbox-claude-app-A / app-B）
@@ -380,8 +385,8 @@ sequenceDiagram
 
 | コンポーネント | ファイルパス | 用途 | 変更の要否 |
 | --- | --- | --- | --- |
-| Makefile | `Makefile` | macOS Docker セットアップ | 変更なし |
-| MAKEFILE_GUIDE.md | `MAKEFILE_GUIDE.md` | Makefile の解説 | Colima メモリ要件の追記が必要 |
+| Makefile | `Makefile` | macOS Docker セットアップ | `setup` / `start` 分離が必要 |
+| MAKEFILE_GUIDE.md | `MAKEFILE_GUIDE.md` | Makefile の解説 | `setup` / `start` 分離と Colima メモリ要件の追記が必要 |
 
 **Trail of Bits 参考実装との差分（採否判断）:**
 
@@ -418,26 +423,27 @@ sequenceDiagram
 | gh 動作 | `gh --version` が動作すること | コンテナ内で実行、終了コード 0 |
 | python3 動作 | `python3 --version` が動作すること | コンテナ内で実行、終了コード 0 |
 | PATH 設定 | `which claude && which codex` が成功すること | コンテナ内で実行 |
-| setup-sandbox.sh --help | ヘルプが表示されること | 標準出力の確認 |
-| setup-sandbox.sh（存在しないパス） | エラーを表示して終了コード 1 | |
-| setup-sandbox.sh（git リポジトリでないパス） | エラーを表示して終了コード 1 | |
-| setup-sandbox.sh --vscode | `.devcontainer/` がターゲットにコピーされること | ターゲットディレクトリの確認 |
+| launch-sandbox.sh --help | ヘルプが表示されること | 標準出力の確認 |
+| launch-sandbox.sh（存在しないパス） | エラーを表示して終了コード 1 | |
+| launch-sandbox.sh（git リポジトリでないパス） | エラーを表示して終了コード 1 | |
+| launch-sandbox.sh --vscode | `.devcontainer/` がターゲットにコピーされること | ターゲットディレクトリの確認 |
 | セキュリティ | ホストのファイルにアクセスできないこと | `ls /home/` にホストユーザーが存在しないこと |
 
 ### 6.2 統合テスト
 
 | テスト対象 | テスト内容 |
 | --- | --- |
-| ターミナル E2E | `setup-sandbox.sh <パス>` → `claude --help` → `exit` で正常終了 |
-| VS Code E2E | `setup-sandbox.sh --vscode <パス>` → VS Code「Reopen in Container」→ `claude --help` |
+| ターミナル E2E | `launch-sandbox.sh <パス>` → `claude --help` → `exit` で正常終了 |
+| VS Code E2E | `launch-sandbox.sh --vscode <パス>` → VS Code「Reopen in Container」→ `claude --help` |
 | Volume 永続化 | コンテナ起動 → Claude Code 認証 → `exit` → 再起動 → 認証が保持されていること |
 | 複数プロジェクト | 2つのターミナルで別プロジェクトを同時起動し、互いに干渉しないこと |
-| macOS フルセットアップ | `make install` → `colima start --memory 8` → `docker build` → `setup-sandbox.sh` → `claude --help` |
+| macOS フルセットアップ | `make setup` → `make start` → `docker build` → `launch-sandbox.sh` → `claude --help` |
 
 ## 改定履歴
 
 | 日付 | バージョン | 内容 |
 | --- | --- | --- |
-| 2026-03-29 | 1.0 | 初版作成。Ubuntu 24.04 ベース、setup-sandbox.sh 統合エントリポイント、Named Volume 永続化 |
+| 2026-03-29 | 1.0 | 初版作成。Ubuntu 24.04 ベース、launch-sandbox.sh 統合エントリポイント、Named Volume 永続化 |
 | 2026-03-30 | 1.1 | 認証永続化の設計を更新: `CLAUDE_CONFIG_DIR`・`--hostname` 追加、Volume 命名にフルパスハッシュを採用 |
 | 2026-03-30 | 1.2 | 標準ツール追加: gh (GitHub CLI)、python3 をプリインストール対象に変更 |
+| 2026-05-08 | 1.3 | Makefile の `install` を `setup` と `start` に分離 |

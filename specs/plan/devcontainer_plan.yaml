@@ -61,7 +61,7 @@ tasks:
       - 必要パッケージ（curl, git, ripgrep, bash, ca-certificates）をインストール
       - 非 root ユーザー devuser を作成し /workspace の所有権を付与
       - Claude Code を公式インストーラー（curl|bash）でインストール（DES-001 §3.2）
-      - OpenAI Codex を GitHub Releases から glibc バイナリとしてインストール（DES-001 §3.2）
+      - OpenAI Codex を GitHub Releases から Linux バイナリとしてインストール（DES-001 §3.2）
       - ENV PATH で ~/.local/bin を PATH に追加
       - SHELL 命令で bash -o pipefail を設定（DES-001 §3.2 ビルドエラーハンドリング）
     acceptance_criteria: "docker build が成功し、コンテナ内で claude --help && codex --help が終了コード 0 で完了すること"
@@ -69,7 +69,7 @@ tasks:
       - specs/design/DES-001_ai_sandbox_design.md
 
   - task_id: TASK-002
-    title: setup-sandbox.sh 作成（ターミナル起動）
+    title: launch-sandbox.sh 作成（ターミナル起動）
     priority: 90
     status: completed
     design_id: DES-001
@@ -89,7 +89,7 @@ tasks:
       - --rebuild オプション対応
       - --help オプション対応
       - エラーハンドリング（DES-001 §3.3 エラーハンドリング表に従う）
-    acceptance_criteria: "./setup-sandbox.sh <テストプロジェクト> でコンテナが起動し、claude --help が成功すること。exit でコンテナが削除され、Named Volume が保持されること"
+    acceptance_criteria: "./launch-sandbox.sh <テストプロジェクト> でコンテナが起動し、claude --help が成功すること。exit でコンテナが削除され、Named Volume が保持されること"
     required_reading:
       - specs/design/DES-001_ai_sandbox_design.md
       - specs/requirements/FNC-002_container_launch_spec.md
@@ -106,7 +106,7 @@ tasks:
     build_check: per_task
     description:
       - docker build で Dockerfile をビルドし成功を確認
-      - setup-sandbox.sh でテスト用 git プロジェクトを指定してコンテナを起動
+      - launch-sandbox.sh でテスト用 git プロジェクトを指定してコンテナを起動
       - コンテナ内で claude --help が終了コード 0 で完了することを確認
       - コンテナ内で codex --help が終了コード 0 で完了することを確認
       - exit でコンテナが削除されること（docker ps で確認）
@@ -121,7 +121,7 @@ tasks:
   # --- Phase 2: VS Code DevContainer 動作 ---
 
   - task_id: TASK-004
-    title: "devcontainer.json 作成 + setup-sandbox.sh --vscode 対応"
+    title: "devcontainer.json 作成 + launch-sandbox.sh --vscode 対応"
     priority: 70
     status: completed
     design_id: DES-001
@@ -131,10 +131,10 @@ tasks:
     build_check: per_task
     description:
       - devcontainer.json を DES-001 §3.4 に従って作成
-      - setup-sandbox.sh に --vscode オプションを追加（DES-001 §3.3 方式 B）
+      - launch-sandbox.sh に --vscode オプションを追加（DES-001 §3.3 方式 B）
       - --vscode 時にターゲットに .devcontainer/ をコピーする処理を実装
       - 既存 .devcontainer/ がある場合の上書き確認
-    acceptance_criteria: "setup-sandbox.sh --vscode <パス> で .devcontainer/ がコピーされ、VS Code の Reopen in Container で接続できること"
+    acceptance_criteria: "launch-sandbox.sh --vscode <パス> で .devcontainer/ がコピーされ、VS Code の Reopen in Container で接続できること"
     required_reading:
       - specs/design/DES-001_ai_sandbox_design.md
       - specs/requirements/FNC-001_devcontainer_environment_spec.md
@@ -142,7 +142,7 @@ tasks:
   # --- 補助タスク ---
 
   - task_id: TASK-005
-    title: Makefile の Colima メモリ設定修正
+    title: Makefile の setup/start 分離と Colima メモリ設定修正
     priority: 50
     status: completed
     design_id: DES-001
@@ -150,9 +150,10 @@ tasks:
     group_id: null
     build_check: skip
     description:
-      - Makefile の colima start を colima start --memory 8 に変更（DES-001 §3.5）
-      - MAKEFILE_GUIDE.md に Colima メモリ要件の説明を追記
-    acceptance_criteria: "make install で Colima が 8GiB メモリで起動すること"
+      - Makefile の初回セットアップを make setup、Colima 起動を make start に分離（DES-001 §3.5）
+      - make start で colima start --memory 8 を実行
+      - MAKEFILE_GUIDE.md に setup/start の使い分けと Colima メモリ要件の説明を追記
+    acceptance_criteria: "make setup で Docker CLI・Colima・Buildx がセットアップされ、make start で Colima が 8GiB メモリで起動すること"
     required_reading:
       - specs/design/DES-001_ai_sandbox_design.md
       - specs/requirements/FNC-004_macos_docker_setup_spec.md
@@ -168,7 +169,7 @@ tasks:
     group_id: null
     build_check: skip
     description:
-      - CLAUDE.md を新規作成（Ubuntu ベース・setup-sandbox.sh 方式の AI Sandbox プロジェクト情報）
+      - CLAUDE.md を新規作成（Ubuntu ベース・launch-sandbox.sh 方式の AI Sandbox プロジェクト情報）
       - README.md を新規作成（初心者向けの使い方ガイド、セットアップ手順、トラブルシューティング）
     acceptance_criteria: "CLAUDE.md と README.md が存在し、旧方式（Alpine、npm、install-devcontainer.sh）への言及がないこと"
     required_reading:
@@ -178,4 +179,4 @@ tasks:
 # === 改定履歴 ===
 revision_history:
   - date: "2026-03-30"
-    content: 初版作成。Ubuntu 24.04 ベース・setup-sandbox.sh 方式への全面移行タスクを定義
+    content: 初版作成。Ubuntu 24.04 ベース・launch-sandbox.sh 方式への全面移行タスクを定義

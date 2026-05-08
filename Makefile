@@ -1,5 +1,9 @@
 .DEFAULT_GOAL := help
-.PHONY: help install uninstall detect-platform check-docker check-colima check-buildx fix-colima-locks
+.PHONY: help setup start launch-sandbox update-tools update-all rebuild install uninstall detect-platform require-colima check-docker check-colima check-buildx fix-colima-locks
+
+LAUNCH_SANDBOX_COMMAND := $(firstword $(MAKECMDGOALS))
+LAUNCH_SANDBOX_ARGS := $(filter-out launch-sandbox,$(MAKECMDGOALS))
+LAUNCH_SANDBOX_TARGET := $(if $(TARGET),$(TARGET),$(firstword $(LAUNCH_SANDBOX_ARGS)))
 
 # 色定義
 YELLOW := \033[33m
@@ -9,7 +13,11 @@ RESET := \033[0m
 # デフォルトターゲット: ヘルプを表示
 help:
 	@echo "Available targets:"
-	@echo "  make install    - Install and start Docker/Colima environment"
+	@echo "  make setup      - Install Docker/Colima/Buildx environment"
+	@echo "  make start      - Start Colima"
+	@echo "  make launch-sandbox <path> [OPTIONS=\"--rebuild\"] - Launch AI Sandbox"
+	@echo "  make update-tools - Update Claude Code and Codex in ai-sandbox image"
+	@echo "  make update-all - Update full ai-sandbox image without cache"
 	@echo "  make uninstall  - Uninstall all components"
 
 # プラットフォーム検出
@@ -44,7 +52,12 @@ fix-colima-locks:
 	done
 
 # メイン: Colima, Docker, Buildx のセットアップ
-install: detect-platform check-docker check-colima check-buildx fix-colima-locks
+setup: detect-platform check-docker check-colima check-buildx
+	@printf "$(YELLOW)✅ Setup complete!$(RESET)\n"
+	@printf "$(YELLOW)Next: Run 'make start' to start Colima.$(RESET)\n"
+
+# Colima を起動
+start: detect-platform require-colima fix-colima-locks
 	@printf "$(YELLOW)Starting Colima...$(RESET)\n"
 	@if colima status &>/dev/null; then \
 		printf "$(YELLOW)Colima is already running.$(RESET)\n"; \
@@ -56,8 +69,58 @@ install: detect-platform check-docker check-colima check-buildx fix-colima-locks
 			exit 1; \
 		fi; \
 	fi
-	@printf "$(YELLOW)✅ Setup complete!$(RESET)\n"
-	@printf "$(YELLOW)Next: See 'Usage' section in README.md$(RESET)\n"
+	@printf "$(YELLOW)✅ Colima is ready!$(RESET)\n"
+	@printf "$(YELLOW)Next: Run 'make launch-sandbox /path/to/project' to launch AI Sandbox.$(RESET)\n"
+
+# このリポジトリ直下から、ターゲットプロジェクトを指定して Sandbox を起動
+launch-sandbox:
+	@if [ -z "$(LAUNCH_SANDBOX_TARGET)" ]; then \
+		printf "$(RED)❌ Target project path is required.$(RESET)\n"; \
+		printf "$(YELLOW)Usage: make launch-sandbox /path/to/project [OPTIONS=\"--rebuild\"]$(RESET)\n"; \
+		exit 1; \
+	fi
+	@./launch-sandbox.sh $(OPTIONS) "$(LAUNCH_SANDBOX_TARGET)"
+
+# Claude Code / Codex の取得レイヤーだけを更新
+update-tools:
+	@printf "$(YELLOW)Updating Claude Code and Codex in ai-sandbox image...$(RESET)\n"
+	@if docker build --build-arg AI_TOOLS_CACHE_BUST="$$(date +%s)" -t ai-sandbox .devcontainer/; then \
+		printf "$(YELLOW)✅ Tool update complete!$(RESET)\n"; \
+		printf "$(YELLOW)Next: Run 'make launch-sandbox /path/to/project' to launch AI Sandbox.$(RESET)\n"; \
+	else \
+		printf "$(RED)❌ Failed to update AI tools in ai-sandbox image.$(RESET)\n"; \
+		exit 1; \
+	fi
+
+# 共有 Docker イメージをキャッシュなしで全更新
+update-all:
+	@printf "$(YELLOW)Updating full ai-sandbox image without cache...$(RESET)\n"
+	@if docker build --no-cache -t ai-sandbox .devcontainer/; then \
+		printf "$(YELLOW)✅ Full image update complete!$(RESET)\n"; \
+		printf "$(YELLOW)Next: Run 'make launch-sandbox /path/to/project' to launch AI Sandbox.$(RESET)\n"; \
+	else \
+		printf "$(RED)❌ Failed to update full ai-sandbox image.$(RESET)\n"; \
+		exit 1; \
+	fi
+
+# 旧コマンド名の互換エイリアス
+rebuild:
+	@printf "$(YELLOW)'make rebuild' has been renamed to 'make update-all'.$(RESET)\n"
+	@$(MAKE) update-all
+
+ifeq ($(LAUNCH_SANDBOX_COMMAND),launch-sandbox)
+ifneq ($(LAUNCH_SANDBOX_ARGS),)
+.PHONY: $(LAUNCH_SANDBOX_ARGS)
+$(LAUNCH_SANDBOX_ARGS):
+	@:
+endif
+endif
+
+# 旧コマンドの誤用防止
+install:
+	@printf "$(RED)❌ 'make install' has been replaced.$(RESET)\n"
+	@printf "$(YELLOW)Use 'make setup' for first-time setup, then 'make start' to start Colima.$(RESET)\n"
+	@exit 1
 
 # Docker がインストールされているかチェック
 check-docker:
@@ -71,6 +134,14 @@ check-docker:
 		fi; \
 	else \
 		printf "$(YELLOW)Docker is already installed.$(RESET)\n"; \
+	fi
+
+# Colima が存在するかチェック（start 用。未インストールなら setup を案内）
+require-colima:
+	@if ! command -v colima &>/dev/null; then \
+		printf "$(RED)❌ Colima is not installed.$(RESET)\n"; \
+		printf "$(YELLOW)Run 'make setup' first.$(RESET)\n"; \
+		exit 1; \
 	fi
 
 # Colima がインストールされているかチェック

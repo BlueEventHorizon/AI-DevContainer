@@ -2,7 +2,7 @@
 
 ## 概要
 
-macOS ユーザー向けに、Docker Desktop の代替として Colima（OSS、無料）を使った Docker 環境の自動セットアップを提供する。Homebrew を前提に、必要なコンポーネントを自動でインストール・起動する。
+macOS ユーザー向けに、Docker Desktop の代替として Colima（OSS、無料）を使った Docker 環境の自動セットアップを提供する。Homebrew を前提に、必要なコンポーネントのインストールと日常の起動を分けて実行できるようにする。
 
 **優先度**: 3
 
@@ -15,7 +15,7 @@ macOS ユーザー向けに、Docker Desktop の代替として Colima（OSS、�
 
 ### インストール要件
 
-`make install` コマンドで以下のコンポーネントを自動セットアップする:
+`make setup` コマンドで以下のコンポーネントを自動セットアップする:
 
 | コンポーネント | 役割 | インストール方法 |
 | --- | --- | --- |
@@ -24,13 +24,12 @@ macOS ユーザー向けに、Docker Desktop の代替として Colima（OSS、�
 | Docker Buildx | マルチアーキテクチャビルド対応 | 公式リリースからインストール |
 
 - 各コンポーネントが既にインストール済みの場合はスキップする
-- インストール後、Colima を自動起動する
-- Colima が既に起動済みの場合はスキップする
+- インストール後、Colima は自動起動せず、`make start` の実行を案内する
 
 ### Colima メモリ要件
 
 - Claude Code はビルド時・実行時ともに大量のメモリを消費するため、Colima のメモリ割り当ては **8GiB 以上**が必要
-- `make install` による初回起動時はデフォルトメモリで起動されるため、ビルド失敗時は `colima stop && colima start --memory 8` で再起動が必要
+- `make start` は Colima を `colima start --memory 8` で起動する
 - この要件は README およびトラブルシューティングに明記する
 
 ### アーキテクチャ対応要件
@@ -49,12 +48,12 @@ macOS ユーザー向けに、Docker Desktop の代替として Colima（OSS、�
 
 ### 日常操作要件
 
-- `colima start`: Colima を起動する（2回目以降の利用時）
+- `make start`: Colima の stale lock を修復し、Colima を起動する（初回セットアップ後および2回目以降の利用時）
 - `colima stop`: Colima を停止する
 
 ### プラットフォーム制約
 
-- macOS 以外のプラットフォームで `make install` を実行した場合、エラーメッセージを表示して終了する
+- macOS 以外のプラットフォームで `make setup` または `make start` を実行した場合、エラーメッセージを表示して終了する
 
 ### エラーケース
 
@@ -80,3 +79,4 @@ macOS ユーザー向けに、Docker Desktop の代替として Colima（OSS、�
 | --- | --- | --- |
 | 2026-03-21 | AI | 既存ソースコードから初版作成 |
 | 2026-03-29 | AI | 全面書き換え: Colima メモリ要件 4GiB 復活（Claude Code コンテナ内インストールのため） |
+| 2026-05-08 | AI | `make install` を `make setup` と `make start` に分離 |

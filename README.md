@@ -18,8 +18,11 @@ AI コーディングアシスタント（Claude Code、OpenAI Codex）を Docke
 # このリポジトリをクローン
 git clone <repository-url> && cd AI-Sandbox
 
-# Docker 環境をセットアップ（Docker + Colima + Buildx をインストール）
-make install
+# Docker 環境をセットアップ（Docker + Colima + Buildx をインストール、初回のみ）
+make setup
+
+# Colima を起動（Mac 再起動後など、Docker が止まっているとき）
+make start
 ```
 
 ### Linux の場合
@@ -32,7 +35,13 @@ Docker がインストール済みであれば追加セットアップは不要�
 
 ```bash
 # ターゲットプロジェクトを指定してコンテナを起動
-./setup-sandbox.sh ~/projects/my-app
+./launch-sandbox.sh ~/projects/my-app
+
+# AI Sandbox リポジトリ直下から Make 経由で起動する場合
+make launch-sandbox ~/projects/my-app
+
+# ターゲットプロジェクト側から起動する場合
+~/tools/AI-Sandbox/launch-sandbox.sh .
 
 # コンテナ内のシェルに入る
 # /workspace $ claude    ← Claude Code が使える
@@ -46,7 +55,7 @@ Docker がインストール済みであれば追加セットアップは不要�
 
 ```bash
 # ターゲットプロジェクトに .devcontainer/ を配置
-./setup-sandbox.sh --vscode ~/projects/my-app
+./launch-sandbox.sh --vscode ~/projects/my-app
 
 # VS Code でプロジェクトを開く
 code ~/projects/my-app
@@ -57,7 +66,7 @@ code ~/projects/my-app
 
 | オプション | 説明 |
 | --- | --- |
-| `--rebuild` | イメージを強制再ビルドして起動（ツール更新時に使用） |
+| `--rebuild` | イメージをキャッシュなしで強制再ビルドして起動 |
 | `--vscode` | ターゲットに `.devcontainer/` を配置（コンテナは起動しない） |
 | `-h`, `--help` | ヘルプを表示 |
 
@@ -67,10 +76,10 @@ code ~/projects/my-app
 
 ```bash
 # ターミナル 1
-./setup-sandbox.sh ~/projects/app-A
+./launch-sandbox.sh ~/projects/app-A
 
 # ターミナル 2
-./setup-sandbox.sh ~/projects/app-B
+./launch-sandbox.sh ~/projects/app-B
 ```
 
 ## AI への権限委譲
@@ -79,7 +88,12 @@ code ~/projects/my-app
 
 通常のプロジェクトで Claude Code を使う場合、`rm -rf` や `curl` などの操作は誤実行を防ぐために確認プロンプトが表示されます。しかし AI Sandbox ではコンテナがホスト Mac のファイルシステムを隔離しているため、**最悪の場合でもターゲットプロジェクトの1ディレクトリしか影響を受けません**（Mac のルートは守られます）。
 
-この安全性を活かして、AI Sandbox では `claude` コマンドに自動的に `--dangerously-skip-permissions` が付与されます。これにより：
+この安全性を活かして、AI Sandbox では AI ツールに以下のフラグが自動付与されます。
+
+- `claude`: `--dangerously-skip-permissions`
+- `codex`: `--dangerously-bypass-approvals-and-sandbox`
+
+これにより：
 
 - **確認プロンプトなし**でコードの生成・編集・実行・削除が連続して進む
 - **ターゲットプロジェクトに独自の `.claude/settings.json` があっても制約を受けない**
@@ -88,7 +102,7 @@ code ~/projects/my-app
 コンテナに入ると以下の警告が赤字で表示されます：
 
 ```
-⚠️  AI Sandbox: claude は --dangerously-skip-permissions モードで動作します。AI への権限が大幅に委譲されています。
+⚠️  AI Sandbox: claude は --dangerously-skip-permissions、codex は --dangerously-bypass-approvals-and-sandbox モードで動作します。AI への権限が大幅に委譲されています。
 ```
 
 ### 禁止されている操作
@@ -112,24 +126,45 @@ Colima のメモリ不足が原因の可能性があります。
 
 ```bash
 colima stop
-colima start --memory 4
-./setup-sandbox.sh --rebuild ~/projects/my-app
+make start
+./launch-sandbox.sh --rebuild ~/projects/my-app
 ```
 
 ### Docker が起動していない
 
 ```bash
 # macOS の場合
-colima start --memory 4
+make start
 
 # 状態確認
 colima status
 ```
 
-### ツールを最新版に更新したい
+### Claude Code / Codex だけ最新版に更新したい
 
 ```bash
-./setup-sandbox.sh --rebuild ~/projects/my-app
+make update-tools
 ```
 
-イメージが再ビルドされ、Claude Code と Codex の最新版がインストールされます。
+`make update-tools` は OS パッケージなどのキャッシュを再利用し、Claude Code と Codex の取得レイヤー以降だけを再実行します。更新後は通常どおり任意のターゲットプロジェクトを起動します。
+
+```bash
+make launch-sandbox ~/projects/my-app
+```
+
+### Dockerfile 全体の変更を反映したい
+
+```bash
+./launch-sandbox.sh --rebuild ~/projects/my-app
+
+# Make 経由の場合
+make update-all
+```
+
+共有 Docker イメージ `ai-sandbox` がキャッシュなしで再ビルドされます。Dockerfile の変更（例: `claude` / `codex` の自動付与フラグ、警告文、追加パッケージ）も、既存イメージには自動反映されないため再ビルドが必要です。
+
+再ビルド後は、通常どおり任意のターゲットプロジェクトを起動します。
+
+```bash
+make launch-sandbox ~/projects/my-app
+```
