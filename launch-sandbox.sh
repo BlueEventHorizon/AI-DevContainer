@@ -1,10 +1,10 @@
 #!/bin/bash
-# setup-sandbox.sh — AI Sandbox エントリポイント
+# launch-sandbox.sh — AI Sandbox エントリポイント
 # 使い方:
-#   ./setup-sandbox.sh <ターゲットプロジェクトのパス>   # ターミナル起動
-#   ./setup-sandbox.sh --vscode <パス>                 # VS Code 用 .devcontainer/ を配置
-#   ./setup-sandbox.sh --rebuild <パス>                # イメージを強制再ビルドして起動
-#   ./setup-sandbox.sh -h | --help                     # ヘルプ表示
+#   ./launch-sandbox.sh <ターゲットプロジェクトのパス>   # ターミナル起動
+#   ./launch-sandbox.sh --vscode <パス>                 # VS Code 用 .devcontainer/ を配置
+#   ./launch-sandbox.sh --rebuild <パス>                # イメージをキャッシュなしで強制再ビルドして起動
+#   ./launch-sandbox.sh -h | --help                     # ヘルプ表示
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ usage() {
   $(basename "$0") [OPTIONS] <ターゲットプロジェクトのパス>
 
 OPTIONS:
-  --rebuild    イメージを強制再ビルドしてからコンテナを起動する
+  --rebuild    イメージをキャッシュなしで強制再ビルドしてからコンテナを起動する
   --vscode     ターゲットプロジェクトに .devcontainer/ を配置する（コンテナは起動しない）
   -h, --help   この使い方を表示する
 
@@ -75,6 +75,16 @@ if [[ -z "${TARGET_PATH}" ]]; then
     exit 1
 fi
 
+# make launch-sandbox TARGET=~/... のようにクォート経由で渡された場合も扱う
+case "${TARGET_PATH}" in
+    "~")
+        TARGET_PATH="${HOME}"
+        ;;
+    "~/"*)
+        TARGET_PATH="${HOME}/${TARGET_PATH#~/}"
+        ;;
+esac
+
 # 絶対パスに変換
 _orig_target="${TARGET_PATH}"
 TARGET_PATH="$(cd "${TARGET_PATH}" 2>/dev/null && pwd)" || {
@@ -115,14 +125,14 @@ fi
 # Docker インストール確認
 if ! command -v docker > /dev/null 2>&1; then
     echo "エラー: Docker がインストールされていません。" >&2
-    echo "macOS の場合: make install を実行してください。" >&2
+    echo "macOS の場合: make setup を実行してください。" >&2
     exit 1
 fi
 
 # Docker 起動確認
 if ! docker info > /dev/null 2>&1; then
     echo "エラー: Docker が起動していません。" >&2
-    echo "macOS の場合: make install を実行してください（Colima のロック修復も自動で行います）。" >&2
+    echo "macOS の場合: make start を実行してください（Colima のロック修復も自動で行います）。" >&2
     exit 1
 fi
 
@@ -141,12 +151,14 @@ fi
 # イメージビルド
 if [[ "${REBUILD}" == true ]] || [[ "${IMAGE_EXISTS}" == false ]]; then
     if [[ "${REBUILD}" == true ]]; then
-        echo "イメージを再ビルドします..."
+        echo "イメージをキャッシュなしで再ビルドします..."
+        BUILD_ARGS=(--no-cache)
     else
         echo "イメージが見つかりません。ビルドを開始します..."
+        BUILD_ARGS=()
     fi
 
-    if ! docker build -t "${IMAGE_NAME}" "${DEVCONTAINER_DIR}"; then
+    if ! docker build "${BUILD_ARGS[@]}" -t "${IMAGE_NAME}" "${DEVCONTAINER_DIR}"; then
         echo "エラー: イメージのビルドに失敗しました。" >&2
         exit 1
     fi

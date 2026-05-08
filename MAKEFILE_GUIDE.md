@@ -17,7 +17,11 @@
 | コマンド | 説明 |
 |---------|------|
 | `make help` | 使用可能なコマンドを表示（デフォルト） |
-| `make install` | 環境全体をセットアップして起動 |
+| `make setup` | Docker CLI、Colima、Docker Buildx をインストール |
+| `make start` | Colima を起動 |
+| `make launch-sandbox <path>` | ターゲットプロジェクトを指定して AI Sandbox を起動 |
+| `make update-tools` | Claude Code / Codex だけを最新版に更新 |
+| `make update-all` | 共有 Docker イメージ全体をキャッシュなしで更新 |
 | `make uninstall` | すべてのコンポーネントをアンインストール |
 
 ### 使用例
@@ -29,8 +33,11 @@
 git clone https://github.com/BlueEventHorizon/AI-DevContainer
 cd AI-DevContainer
 
-# 環境をセットアップ
-make install
+# 環境をセットアップ（初回のみ）
+make setup
+
+# Colima を起動
+make start
 ```
 
 実行時の出力例:
@@ -41,9 +48,13 @@ make install
    Detected architecture: arm64 (darwin-arm64)
    Downloading buildx v0.26.1...
 ✅ Docker buildx installed successfully.
+✅ Setup complete!
+Next: Run 'make start' to start Colima.
+
 🟢 Starting Colima...
 ✅ Colima started successfully.
-🚀 You can launch up DevContainer with VS Code
+✅ Colima is ready!
+Next: Run 'make launch-sandbox /path/to/project' to launch AI Sandbox.
 ```
 
 #### 2回目以降の起動
@@ -51,14 +62,41 @@ make install
 Colima が停止している場合:
 
 ```bash
-colima start
+make start
 ```
 
-または、すべてをチェックして起動:
+`make start` は Colima の stale なロックを修復してから `colima start --memory 8` を実行します。Mac 再起動後や Docker が起動していない場合は、通常このコマンドだけで十分です。
+
+#### AI Sandbox の起動
+
+AI Sandbox リポジトリ直下から起動する場合:
 
 ```bash
-make install
+make launch-sandbox ~/projects/my-app
 ```
+
+オプションを渡す場合:
+
+```bash
+make launch-sandbox ~/projects/my-app OPTIONS="--rebuild"
+make launch-sandbox ~/projects/my-app OPTIONS="--vscode"
+```
+
+Claude Code / Codex だけを最新版に更新する場合:
+
+```bash
+make update-tools
+```
+
+`make update-tools` は Dockerfile の `AI_TOOLS_CACHE_BUST` build arg を更新して、OS/apt レイヤーのキャッシュを再利用したまま Claude Code / Codex の取得レイヤー以降だけを再実行します。
+
+Dockerfile 全体の変更や OS パッケージ更新を反映する場合:
+
+```bash
+make update-all
+```
+
+`make update-all` は `docker build --no-cache -t ai-sandbox .devcontainer/` を実行するため、全レイヤーをキャッシュなしで作り直します。イメージは全ターゲットプロジェクトで共有されるため、プロジェクトごとに更新・再ビルドする必要はありません。完了後は `make launch-sandbox ~/projects/my-app` のように任意のターゲットを起動します。
 
 #### 停止
 
@@ -73,7 +111,8 @@ colima stop
 ```bash
 # すべて削除して再インストール
 make uninstall
-make install
+make setup
+make start
 ```
 
 **環境を完全にリセット:**
@@ -81,7 +120,8 @@ make install
 ```bash
 # すべて削除して再セットアップ
 make uninstall
-make install
+make setup
+make start
 ```
 
 ## コンポーネント詳細
@@ -194,9 +234,9 @@ sequenceDiagram
     VSC->>CONTAINER: リモート接続開始
 ```
 
-### インストールフロー
+### セットアップフロー
 
-Makefile がコンポーネントをインストールする際の依存関係:
+`make setup` がコンポーネントをインストールする際の依存関係:
 
 ```mermaid
 graph TB
@@ -204,8 +244,7 @@ graph TB
     STEP2A["[2a] check-docker<br/>Docker CLI インストール"]
     STEP2B["[2b] check-colima<br/>Colima インストール"]
     STEP2C["[2c] check-buildx<br/>Buildx プラグインインストール"]
-    STEP3["[3] Colima 起動<br/>colima start"]
-    STEP4["[4] VS Code 起動"]
+    STEP3["[3] セットアップ完了<br/>make start を案内"]
 
     STEP1 --> STEP2A
     STEP1 --> STEP2B
@@ -213,20 +252,45 @@ graph TB
     STEP2A -.-> STEP3
     STEP2B --> STEP3
     STEP2C -.-> STEP3
-    STEP3 --> STEP4
 
     style STEP1 fill:#ffe6e6
     style STEP2A fill:#e6f3ff
     style STEP2B fill:#e6f3ff
     style STEP2C fill:#e6f3ff
     style STEP3 fill:#ffffcc
-    style STEP4 fill:#e6ffe6
 ```
 
 **注意**:
 - ステップ2（a/b/c）は並列実行される（Makeの依存関係により）
-- Colima の起動には Docker CLI は不要だが、実行時には必要
 - Buildx は Docker CLI のプラグインだが、インストール順序は問わない（プラグインディレクトリに配置されるだけ）
+
+### 起動フロー
+
+`make start` は Colima の起動だけを担当します。初回セットアップは `make setup` で済ませておく必要があります。
+
+```mermaid
+graph TB
+    STEP1["[1] detect-platform<br/>macOS & Homebrew 確認"]
+    STEP2["[2] require-colima<br/>Colima の存在確認"]
+    STEP3["[3] fix-colima-locks<br/>stale lock 修復"]
+    STEP4{"[4] Colima 起動中?"}
+    STEP5["[5a] スキップ"]
+    STEP6["[5b] colima start --memory 8"]
+    STEP7["[6] 起動完了"]
+
+    STEP1 --> STEP2
+    STEP2 --> STEP3
+    STEP3 --> STEP4
+    STEP4 -->|Yes| STEP5
+    STEP4 -->|No| STEP6
+    STEP5 --> STEP7
+    STEP6 --> STEP7
+
+    style STEP1 fill:#ffe6e6
+    style STEP2 fill:#e6f3ff
+    style STEP3 fill:#ffffcc
+    style STEP7 fill:#e6ffe6
+```
 
 ### クリーンアップフロー
 
@@ -274,7 +338,11 @@ graph TD
 | ターゲット | 説明 | 依存関係 |
 |-----------|------|---------|
 | `help` | 使用可能なコマンドを表示（デフォルト） | なし |
-| `install` | 環境全体をセットアップして起動 | `detect-platform`, `check-docker`, `check-colima`, `check-buildx` |
+| `setup` | Docker CLI、Colima、Docker Buildx をインストール | `detect-platform`, `check-docker`, `check-colima`, `check-buildx` |
+| `start` | Colima を起動 | `detect-platform`, `require-colima`, `fix-colima-locks` |
+| `launch-sandbox` | 指定したプロジェクトを AI Sandbox で起動 | なし |
+| `update-tools` | 共有 Docker イメージ内の Claude Code / Codex 取得レイヤーだけを更新 | なし |
+| `update-all` | 共有 Docker イメージ全体をキャッシュなしで更新 | なし |
 | `uninstall` | すべてのコンポーネントをアンインストール | なし |
 
 ### 内部ターゲット（直接実行は非推奨）
@@ -282,11 +350,12 @@ graph TD
 | ターゲット | 説明 | 依存関係 |
 |-----------|------|---------|
 | `detect-platform` | macOS かつ Homebrew がインストールされているか確認 | なし |
+| `require-colima` | Colima がインストール済みか確認、なければ `make setup` を案内 | なし |
 | `check-docker` | Docker がインストールされているか確認、なければインストール | なし |
 | `check-colima` | Colima がインストールされているか確認、なければインストール | なし |
 | `check-buildx` | Buildx プラグインがインストールされているか確認、なければインストール | なし |
 
-### `install` の動作
+### `setup` の動作
 
 1. **プラットフォーム検証** (`detect-platform`)
    - macOS であることを確認
@@ -302,14 +371,25 @@ graph TD
      - 対応するバイナリをダウンロード
      - `~/.docker/cli-plugins/docker-buildx` に配置して実行権限を付与
 
-3. **Colima の起動**
-   - `colima status` で起動状態を確認
-   - 未起動なら `colima start` を実行
-   - 既に起動中ならスキップ
+3. **次の操作を案内**
+   - セットアップ完了後、`make start` の実行を案内
 
-4. **VS Code の起動（オプション）**
-   - `code` コマンドが存在すれば、現在のディレクトリで VS Code を起動
-   - 存在しなければ警告メッセージのみ表示（エラーにはしない）
+### `start` の動作
+
+1. **プラットフォーム検証** (`detect-platform`)
+   - macOS であることを確認
+   - Homebrew がインストールされていることを確認
+
+2. **Colima の存在確認** (`require-colima`)
+   - Colima が未インストールなら `make setup` を案内して終了
+
+3. **Colima/Lima の stale lock 修復** (`fix-colima-locks`)
+   - スリープ、強制再起動、クラッシュ後に残る stale なディスクロックを削除
+
+4. **Colima の起動**
+   - `colima status` で起動状態を確認
+   - 未起動なら `colima start --memory 8` を実行
+   - 既に起動中ならスキップ
 
 ### `uninstall` の動作
 
